@@ -1,0 +1,58 @@
+{
+	"name": "tidysky",
+	"private": true,
+	"version": "1.1.0",
+	"type": "module",
+	"license": "MIT",
+	"author": "Nate (https://nate.id)",
+	"repository": "github:natedotid/tidysky",
+	"homepage": "https://tidysky.io",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:sw": "tsc --noEmit -p src/service-worker",
+		"check:layout": "node scripts/check-layout.mjs",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"icons": "node scripts/render-icons.mjs",
+		"test:unit": "vitest",
+		"test": "npm run test:unit -- --run",
+		"lint": "prettier --check . --ignore-path .gitignore --ignore-path .git/info/exclude && eslint .",
+		"format": "prettier --write . --ignore-path .gitignore --ignore-path .git/info/exclude"
+	},
+	"devDependencies": {
+		"@eslint/js": "^10.0.1",
+		"@resvg/resvg-js": "^2.6.2",
+		"@sveltejs/adapter-static": "^4.0.1",
+		"@sveltejs/kit": "^3.0.0",
+		"@sveltejs/vite-plugin-svelte": "^7.2.0",
+		"@types/node": "^26",
+		"eslint": "^10.4.1",
+		"eslint-config-prettier": "^10.1.8",
+		"eslint-plugin-svelte": "^3.19.0",
+		"fake-indexeddb": "^6.2.7",
+		"globals": "^17.6.0",
+		"playwright": "1.65.1",
+		"prettier": "^3.8.3",
+		"prettier-plugin-svelte": "^4.1.0",
+		"svelte": "^5.57.2",
+		"svelte-check": "^4.6.0",
+		"typescript": "^6.0.3",
+		"typescript-eslint": "^8.60.1",
+		"vite": "^8.3.0",
+		"vitest": "^4.1.8"
+	},
+	"imports": {
+		"#lib": "./src/lib/index.js",
+		"#lib/*": "./src/lib/*"
+	},
+	"dependencies": {
+		"@atproto/api": "^0.30.0",
+		"@atproto/oauth-client-browser": "^0.5.11",
+		"@fontsource-variable/inter": "^5.3.0",
+		"@fontsource/ibm-plex-mono": "^5.3.0",
+		"idb": "^8.0.4"
+	}
+}

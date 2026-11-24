@@ -1,0 +1,14 @@
+{
+	"client_id": "https://tidysky.io/client-metadata.json",
+	"client_name": "TidySky",
+	"client_uri": "https://tidysky.io",
+	"logo_uri": "https://tidysky.io/icons/icon-192.png",
+	"policy_uri": "https://tidysky.io/privacy",
+	"redirect_uris": ["https://tidysky.io/"],
+	"scope": "atproto repo:app.bsky.graph.follow?action=create&action=delete repo:app.bsky.graph.list repo:app.bsky.graph.listitem rpc:app.bsky.actor.getProfile?aud=did:web:api.bsky.app%23bsky_appview rpc:app.bsky.actor.getProfiles?aud=did:web:api.bsky.app%23bsky_appview rpc:app.bsky.graph.getFollowers?aud=did:web:api.bsky.app%23bsky_appview rpc:app.bsky.graph.muteActor?aud=did:web:api.bsky.app%23bsky_appview rpc:app.bsky.graph.unmuteActor?aud=did:web:api.bsky.app%23bsky_appview",
+	"grant_types": ["authorization_code", "refresh_token"],
+	"response_types": ["code"],
+	"token_endpoint_auth_method": "none",
+	"application_type": "web",
+	"dpop_bound_access_tokens": true
+}

@@ -1,0 +1,302 @@
+{
+	"feed": [
+		{
+			"post": {
+				"uri": "at://did:plc:0000000000000000000000000000000000000001/app.bsky.feed.post/post00000001",
+				"cid": "bafyreifake00000000000000000000000000000000000000000000001",
+				"author": {
+					"did": "did:plc:0000000000000000000000000000000000000001",
+					"handle": "alice.example.com",
+					"displayName": "Alice",
+					"avatar": "https://cdn.example.com/img/avatar/plain/did:plc:0000000000000000000000000000000000000001/bafkreifake0000000000000000000000000000000000001",
+					"labels": [],
+					"createdAt": "2024-01-01T00:00:00.000Z"
+				},
+				"record": {
+					"$type": "app.bsky.feed.post",
+					"createdAt": "2026-01-08T15:00:23.966Z",
+					"embed": {
+						"$type": "app.bsky.embed.video",
+						"aspectRatio": {
+							"height": 1080,
+							"width": 1080
+						},
+						"presentation": "default",
+						"video": {
+							"$type": "blob",
+							"ref": {
+								"$link": "bafkreifake0000000000000000000000000000000000000000001"
+							},
+							"mimeType": "video/mp4",
+							"size": 123456
+						}
+					},
+					"facets": [
+						{
+							"features": [
+								{
+									"$type": "app.bsky.richtext.facet#link",
+									"uri": "https://example.com/game"
+								}
+							],
+							"index": {
+								"byteEnd": 60,
+								"byteStart": 38
+							}
+						}
+					],
+					"langs": ["en"],
+					"text": "i made a tiny game out of an old classic https://example.com/game"
+				},
+				"embed": {
+					"playlist": "https://video.example.com/watch/0001/playlist.m3u8",
+					"thumbnail": "https://video.example.com/watch/0001/thumbnail.jpg",
+					"aspectRatio": {
+						"height": 1080,
+						"width": 1080
+					},
+					"presentation": "default",
+					"$type": "app.bsky.embed.video#view"
+				},
+				"bookmarkCount": 12,
+				"replyCount": 4,
+				"repostCount": 39,
+				"likeCount": 232,
+				"quoteCount": 3,
+				"indexedAt": "2026-01-08T15:00:25.756Z",
+				"labels": []
+			},
+			"reason": {
+				"by": {
+					"did": "did:plc:0000000000000000000000000000000000000003",
+					"handle": "carol.example.com",
+					"displayName": "Carol",
+					"avatar": "https://cdn.example.com/img/avatar/plain/did:plc:0000000000000000000000000000000000000003/bafkreifake000000000000000000000000000000000000003",
+					"labels": [],
+					"createdAt": "2023-04-12T04:53:57.057Z"
+				},
+				"uri": "at://did:plc:0000000000000000000000000000000000000003/app.bsky.feed.repost/repost00000001",
+				"cid": "bafyreifake00000000000000000000000000000000000000000000002",
+				"indexedAt": "2026-01-10T01:25:45.258Z",
+				"$type": "app.bsky.feed.defs#reasonRepost"
+			}
+		},
+		{
+			"post": {
+				"uri": "at://did:plc:0000000000000000000000000000000000000002/app.bsky.feed.post/post00000002",
+				"cid": "bafyreifake00000000000000000000000000000000000000000000003",
+				"author": {
+					"did": "did:plc:0000000000000000000000000000000000000002",
+					"handle": "bob.example.com",
+					"displayName": "Bob",
+					"avatar": "https://cdn.example.com/img/avatar/plain/did:plc:0000000000000000000000000000000000000002/bafkreifake000000000000000000000000000000000000002",
+					"labels": [],
+					"createdAt": "2024-02-02T00:00:00.000Z"
+				},
+				"record": {
+					"$type": "app.bsky.feed.post",
+					"createdAt": "2026-01-09T09:30:00.000Z",
+					"embed": {
+						"$type": "app.bsky.embed.images",
+						"images": [
+							{
+								"image": {
+									"$type": "blob",
+									"ref": {
+										"$link": "bafkreifake0000000000000000000000000000000000000000002"
+									},
+									"mimeType": "image/jpeg",
+									"size": 45678
+								},
+								"alt": "a lighthouse on a cliff"
+							}
+						]
+					},
+					"reply": {
+						"root": {
+							"uri": "at://did:plc:0000000000000000000000000000000000000001/app.bsky.feed.post/post00000001",
+							"cid": "bafyreifake00000000000000000000000000000000000000000000001"
+						},
+						"parent": {
+							"uri": "at://did:plc:0000000000000000000000000000000000000001/app.bsky.feed.post/post00000001",
+							"cid": "bafyreifake00000000000000000000000000000000000000000000001"
+						}
+					},
+					"langs": ["en"],
+					"text": "this is my favorite kind of game"
+				},
+				"embed": {
+					"images": [
+						{
+							"thumb": "https://cdn.example.com/img/0002.jpg",
+							"fullsize": "https://cdn.example.com/img/full/0002.jpg",
+							"alt": "a lighthouse on a cliff"
+						}
+					],
+					"$type": "app.bsky.embed.images#view"
+				},
+				"bookmarkCount": 2,
+				"replyCount": 1,
+				"repostCount": 0,
+				"likeCount": 18,
+				"quoteCount": 0,
+				"indexedAt": "2026-01-09T09:30:01.000Z",
+				"labels": []
+			}
+		},
+		{
+			"post": {
+				"uri": "at://did:plc:0000000000000000000000000000000000000003/app.bsky.feed.post/post00000003",
+				"cid": "bafyreifake00000000000000000000000000000000000000000000004",
+				"author": {
+					"did": "did:plc:0000000000000000000000000000000000000003",
+					"handle": "carol.example.com",
+					"displayName": "Carol",
+					"avatar": "https://cdn.example.com/img/avatar/plain/did:plc:0000000000000000000000000000000000000003/bafkreifake000000000000000000000000000000000000003",
+					"labels": [],
+					"createdAt": "2023-04-12T04:53:57.057Z"
+				},
+				"record": {
+					"$type": "app.bsky.feed.post",
+					"createdAt": "2026-01-09T12:00:00.000Z",
+					"embed": {
+						"$type": "app.bsky.embed.recordWithMedia",
+						"record": {
+							"uri": "at://did:plc:0000000000000000000000000000000000000001/app.bsky.feed.post/post00000001",
+							"cid": "bafyreifake00000000000000000000000000000000000000000000001"
+						},
+						"media": {
+							"$type": "app.bsky.embed.images",
+							"images": [
+								{
+									"image": {
+										"$type": "blob",
+										"ref": {
+											"$link": "bafkreifake0000000000000000000000000000000000000000003"
+										},
+										"mimeType": "image/png",
+										"size": 9012
+									},
+									"alt": "the same post on my own screen"
+								}
+							]
+						}
+					},
+					"langs": ["en"],
+					"text": "quoting this with my own screenshot"
+				},
+				"embed": {
+					"record": {
+						"uri": "at://did:plc:0000000000000000000000000000000000000001/app.bsky.feed.post/post00000001",
+						"cid": "bafyreifake00000000000000000000000000000000000000000000001",
+						"value": {
+							"$type": "app.bsky.feed.post",
+							"createdAt": "2026-01-08T15:00:23.966Z",
+							"langs": ["en"],
+							"text": "i made a tiny game out of an old classic https://example.com/game"
+						},
+						"author": {
+							"did": "did:plc:0000000000000000000000000000000000000001",
+							"handle": "alice.example.com",
+							"displayName": "Alice",
+							"labels": [],
+							"createdAt": "2024-01-01T00:00:00.000Z"
+						},
+						"likeCount": 232,
+						"$type": "app.bsky.embed.record#view"
+					},
+					"media": {
+						"images": [
+							{
+								"thumb": "https://cdn.example.com/img/0003.jpg",
+								"fullsize": "https://cdn.example.com/img/full/0003.jpg",
+								"alt": "the same post on my own screen"
+							}
+						],
+						"$type": "app.bsky.embed.images#view"
+					},
+					"$type": "app.bsky.embed.recordWithMedia#view"
+				},
+				"bookmarkCount": 1,
+				"replyCount": 0,
+				"repostCount": 2,
+				"likeCount": 11,
+				"quoteCount": 0,
+				"indexedAt": "2026-01-09T12:00:01.000Z",
+				"labels": []
+			}
+		},
+		{
+			"post": {
+				"uri": "at://did:plc:0000000000000000000000000000000000000001/app.bsky.feed.post/post00000004",
+				"cid": "bafyreifake00000000000000000000000000000000000000000000005",
+				"author": {
+					"did": "did:plc:0000000000000000000000000000000000000000000001",
+					"handle": "alice.example.com",
+					"displayName": "Alice",
+					"avatar": "https://cdn.example.com/img/avatar/plain/did:plc:0000000000000000000000000000000000000001/bafkreifake000000000000000000000000000000000000001",
+					"labels": [],
+					"createdAt": "2024-01-01T00:00:00.000Z"
+				},
+				"record": {
+					"$type": "app.bsky.feed.post",
+					"createdAt": "2026-01-05T08:15:00.000Z",
+					"embed": {
+						"$type": "app.bsky.embed.external",
+						"external": {
+							"uri": "https://example.com/launch",
+							"title": "A tiny launch post",
+							"description": "Notes from the launch"
+						}
+					},
+					"langs": ["fr", "en"],
+					"text": "lancement de mon petit jeu, notes dans le lien"
+				},
+				"embed": {
+					"external": {
+						"uri": "https://example.com/launch",
+						"title": "A tiny launch post",
+						"description": "Notes from the launch",
+						"thumb": "https://cdn.example.com/img/0004.jpg"
+					},
+					"$type": "app.bsky.embed.external#view"
+				},
+				"bookmarkCount": 5,
+				"replyCount": 3,
+				"repostCount": 7,
+				"likeCount": 96,
+				"quoteCount": 1,
+				"indexedAt": "2026-01-05T08:15:01.000Z",
+				"labels": []
+			}
+		},
+		{
+			"post": {
+				"uri": "at://did:plc:0000000000000000000000000000000000000002/app.bsky.feed.post/post00000005",
+				"cid": "bafyreifake00000000000000000000000000000000000000000000006",
+				"author": {
+					"did": "did:plc:0000000000000000000000000000000000000002",
+					"handle": "bob.example.com",
+					"displayName": "Bob",
+					"avatar": "https://cdn.example.com/img/avatar/plain/did:plc:0000000000000000000000000000000000000002/bafkreifake000000000000000000000000000000000000002",
+					"labels": [],
+					"createdAt": "2024-02-02T00:00:00.000Z"
+				},
+				"record": {
+					"$type": "app.bsky.feed.post",
+					"createdAt": "2026-01-02T22:00:00.000Z",
+					"langs": ["en"],
+					"text": "plain text post, no embed, just words"
+				},
+				"bookmarkCount": 0,
+				"replyCount": 2,
+				"repostCount": 1,
+				"likeCount": 24,
+				"quoteCount": 0,
+				"indexedAt": "2026-01-02T22:00:01.000Z",
+				"labels": []
+			}
+		}
+	],
+	"cursor": "2026-01-01T00:00:00.000Z"
+}
