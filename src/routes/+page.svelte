@@ -145,6 +145,12 @@
 		<span class="sep" aria-hidden="true">·</span>
 		<a href={resolve('/privacy')}>Privacy</a>
 		<span class="sep" aria-hidden="true">·</span>
+		<a
+			href="https://github.com/natedotid/tidysky"
+			target="_blank"
+			rel="external noopener noreferrer">Source code</a
+		>
+		<span class="sep" aria-hidden="true">·</span>
 		<a href="https://bsky.app/profile/nate.id" target="_blank" rel="external noopener noreferrer"
 			>Built by Nate</a
 		>

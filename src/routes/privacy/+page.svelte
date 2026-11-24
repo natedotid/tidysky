@@ -85,6 +85,14 @@
 			and posts from your Bluesky server. This is public data, it needs no extra permission, and it
 			stays in your browser.
 		</p>
+		<p>
+			TidySky's code is open source, so you can check all of this yourself:
+			<a
+				href="https://github.com/natedotid/tidysky"
+				target="_blank"
+				rel="external noopener noreferrer">github.com/natedotid/tidysky</a
+			>.
+		</p>
 	</section>
 
 	<section class="card">
