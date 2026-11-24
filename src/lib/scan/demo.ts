@@ -245,6 +245,11 @@ export interface DemoData {
 	 * "unfollowed elsewhere" sheet can show who they are; the fifth has none.
 	 */
 	droppedElsewhere: string[];
+	/**
+	 * Each followed DID's generated posting rate (items a day, before the
+	 * sample), so tests can check the rate mix the demo intends.
+	 */
+	rateByDid: Map<string, number>;
 }
 
 export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): DemoData {
@@ -270,7 +275,10 @@ export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): De
 	const makeName = (handle: string): string => {
 		if (rand() < 0.7)
 			return rand() < 0.5 ? pick(NAME_FIRST) : `${pick(NAME_FIRST)} ${pick(NAME_LAST)}`;
-		const [a, b] = handle.split('-');
+		// Drop the domain first: "creek-dew.bsky.social" is "Creek Dew",
+		// not "Creek Dew.bsky.social".
+		const bare = handle.replace(/\.bsky\.social$/, '');
+		const [a, b] = bare.split('-');
 		return `${a[0].toUpperCase()}${a.slice(1)} ${b ? b[0].toUpperCase() + b.slice(1) : ''}`.trim();
 	};
 	const rkey = (i: number): string =>
@@ -319,13 +327,16 @@ export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): De
 	}
 
 	// Posting rates: a handful of firehoses (60–200 items a day, ~0.5%), a
-	// busy middle (8–30), then a long skewed tail where most post a few times
-	// a week. Firehoses and the busy middle only go to accounts that posted
-	// in the last 7 days, so their high rates survive the sample estimate.
+	// busy middle (8–30), a middle band (6–20) so the "Most active" list
+	// steps down gradually, then a long skewed tail where most post a few
+	// times a week. Firehoses, the busy middle and the middle band only go
+	// to accounts that posted in the last 7 days, so their high rates
+	// survive the sample estimate.
 	const baseRate = (): number => 0.05 + 6 * rand() ** 4;
 	const active7Pool: number[] = [
 		...Array.from({ length: Math.max(5, Math.round(0.005 * count)) }, () => 40 + rand() * 60),
-		...Array.from({ length: Math.max(8, Math.round(0.02 * count)) }, () => 20 + rand() * 30)
+		...Array.from({ length: Math.max(8, Math.round(0.02 * count)) }, () => 20 + rand() * 30),
+		...Array.from({ length: Math.max(6, Math.round(0.03 * count)) }, () => 6 + rand() * 14)
 	];
 	while (active7Pool.length < stateCounts.active7) active7Pool.push(baseRate());
 	for (let i = active7Pool.length - 1; i > 0; i -= 1) {
@@ -511,7 +522,8 @@ export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): De
 					break;
 				}
 			}
-			const [a, b] = handle.split('-');
+			const bare = handle.replace(/\.bsky\.social$/, '');
+			const [a, b] = bare.split('-');
 			let didPart = '';
 			for (let k = 0; k < 27; k += 1)
 				didPart += DID_ALPHABET[Math.floor(fr() * DID_ALPHABET.length)];
@@ -746,7 +758,17 @@ export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): De
 		);
 	}
 
-	return { me, follows, profiles, feeds, meFeed, meFollowers, ownRecords, droppedElsewhere };
+	return {
+		me,
+		follows,
+		profiles,
+		feeds,
+		meFeed,
+		meFollowers,
+		ownRecords,
+		droppedElsewhere,
+		rateByDid: new Map(meta.map((m) => [m.did, m.rate]))
+	};
 }
 
 /**

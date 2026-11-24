@@ -120,13 +120,50 @@ describe('generateDemoData', () => {
 		}
 	});
 
-	it('the posting rate is a long tail: a top firehose, ~20 accounts write half', () => {
+	it('keeps display names free of handle domains', () => {
+		const data = generateDemoData(42, COUNT, NOW);
+		for (const p of [...data.profiles, ...data.meFollowers, data.me]) {
+			expect(p.displayName).not.toMatch(/\.bsky\.social/i);
+			// No ".something" token: the old bug printed "Creek Dew.bsky.social".
+			expect(p.displayName).not.toMatch(/\.[a-z]/i);
+		}
+	});
+
+	it('steps the posting rates down: at least five active-7 accounts in each of 5-10, 10-20 and 20-40 a day', () => {
+		const data = generateDemoData(42, COUNT, NOW);
+		const activeIn7 = (did: string): boolean => {
+			const feed = data.feeds.get(did);
+			if (feed === undefined || !feed.ok || feed.items.length === 0) return false;
+			let last = -Infinity;
+			for (const item of feed.items) last = Math.max(last, Date.parse(item.at));
+			return NOW - last <= 7 * DAY_MS;
+		};
+		// The generated rate, not the sample estimate: the estimate spans
+		// from "now" and under-reads any account whose newest post is days old.
+		let low = 0; // 5 to 10
+		let mid = 0; // 10 to 20
+		let high = 0; // 20 to 40
+		for (const did of new Set(data.follows.map((f) => f.did))) {
+			if (!activeIn7(did)) continue;
+			const r = data.rateByDid.get(did) ?? 0;
+			if (r >= 5 && r < 10) low += 1;
+			else if (r >= 10 && r < 20) mid += 1;
+			else if (r >= 20 && r < 40) high += 1;
+		}
+		expect(low).toBeGreaterThanOrEqual(5);
+		expect(mid).toBeGreaterThanOrEqual(5);
+		expect(high).toBeGreaterThanOrEqual(5);
+	});
+
+	it('the posting rate is a long tail: a top firehose, ~25 accounts write half', () => {
 		const accounts = accountsWithActivity();
 		const share = feedShare(accounts);
 		expect(share.top[0].share).toBeGreaterThan(0.08);
 		expect(share.top[0].share).toBeLessThan(0.15);
 		expect(share.halfCount).toBeGreaterThanOrEqual(10);
-		expect(share.halfCount).toBeLessThanOrEqual(25);
+		// The middle band (6 to 20 a day) adds mid-tier mass, so a bit more
+		// than the old ~20 accounts are needed to reach half.
+		expect(share.halfCount).toBeLessThanOrEqual(30);
 		const rates = accounts.map((a) => a.activity?.itemsPerDay ?? 0).sort((a, b) => b - a);
 		expect(rates[0]).toBeGreaterThanOrEqual(3 * rates[9]);
 	});
