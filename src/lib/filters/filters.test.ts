@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { DemoSource, generateDemoData } from '#lib/scan/demo';
 import { summarizeActivity } from '#lib/scan/estimate';
 import { collectInteractions } from '#lib/scan/interactions';
-import type { ActivitySummary, FollowAccount, InteractionSummary } from '#lib/scan/types';
+import type {
+	ActivitySummary,
+	FollowAccount,
+	InteractionSummary,
+	ProfileViewer
+} from '#lib/scan/types';
 
 import {
 	describe as describeSpec,
@@ -129,6 +134,73 @@ describe('followsYou and negation', () => {
 			]
 		};
 		expect(matches(acc({ followsYou: null, description: 'here' }), spec, NOW)).toBe(false);
+	});
+});
+
+describe('the viewer clauses', () => {
+	const listUri = 'at://did:plc:owner/app.bsky.graph.list/rk1';
+	const mutedViewer: ProfileViewer = {
+		mutedByList: { uri: listUri, name: 'No sports' },
+		blockingByList: null,
+		blockedBy: false,
+		blockingPersonally: false,
+		knownFollowers: 3
+	};
+	const blockedByListViewer: ProfileViewer = {
+		mutedByList: null,
+		blockingByList: { uri: listUri, name: 'Reply guys' },
+		blockedBy: false,
+		blockingPersonally: false,
+		knownFollowers: null
+	};
+	const blocksYouViewer: ProfileViewer = {
+		mutedByList: null,
+		blockingByList: null,
+		blockedBy: true,
+		blockingPersonally: false,
+		knownFollowers: null
+	};
+	const plainViewer: ProfileViewer = {
+		mutedByList: null,
+		blockingByList: null,
+		blockedBy: false,
+		blockingPersonally: false,
+		knownFollowers: 2
+	};
+
+	it('hiddenByList: true for a list mute or list block, false otherwise', () => {
+		const c: Clause = { kind: 'hiddenByList' };
+		expect(evalClause(acc({ viewer: mutedViewer }), c, NOW)).toBe(true);
+		expect(evalClause(acc({ viewer: blockedByListViewer }), c, NOW)).toBe(true);
+		expect(evalClause(acc({ viewer: blocksYouViewer }), c, NOW)).toBe(false);
+		expect(evalClause(acc({ viewer: plainViewer }), c, NOW)).toBe(false);
+	});
+
+	it('blocksYou: true only when they block you', () => {
+		const c: Clause = { kind: 'blocksYou' };
+		expect(evalClause(acc({ viewer: blocksYouViewer }), c, NOW)).toBe(true);
+		expect(evalClause(acc({ viewer: mutedViewer }), c, NOW)).toBe(false);
+		expect(evalClause(acc({ viewer: plainViewer }), c, NOW)).toBe(false);
+	});
+
+	it('noKnownFollowers: true at a mutual count of 0, false above it', () => {
+		const c: Clause = { kind: 'noKnownFollowers' };
+		expect(evalClause(acc({ viewer: { ...plainViewer, knownFollowers: 0 } }), c, NOW)).toBe(true);
+		expect(evalClause(acc({ viewer: plainViewer }), c, NOW)).toBe(false);
+	});
+
+	it('a row with no viewer is unknown to all three, negated or not', () => {
+		const plain = acc();
+		const clauses: FilterClause[] = [
+			{ kind: 'hiddenByList' },
+			{ kind: 'blocksYou' },
+			{ kind: 'noKnownFollowers' }
+		];
+		for (const c of clauses) {
+			expect(evalClause(plain, c, NOW), c.kind).toBeNull();
+			expect(matches(plain, { clauses: [c] }, NOW), c.kind).toBe(false);
+			expect(matches(plain, { clauses: [{ ...c, negate: true }] }, NOW), c.kind).toBe(false);
+		}
 	});
 });
 

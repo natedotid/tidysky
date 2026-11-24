@@ -41,6 +41,21 @@ export const CLEANUP_PRESETS: Preset[] = [
 		spec: { clauses: [{ kind: 'followsYou', negate: true }] }
 	},
 	{
+		// Sheet only: these need the signed-in read, so they stay out of the
+		// row's always-visible preset pills.
+		id: 'hiddenByList',
+		name: 'Hidden by a list',
+		blurb:
+			'Muted or blocked by a moderation list you subscribe to. To see them again, unsubscribe from the list on Bluesky.',
+		spec: { clauses: [{ kind: 'hiddenByList' }] }
+	},
+	{
+		id: 'blocksYou',
+		name: 'Blocks you',
+		blurb: "They've blocked you, so nothing of theirs reaches you.",
+		spec: { clauses: [{ kind: 'blocksYou' }] }
+	},
+	{
 		id: 'oneWay',
 		name: 'Active, but no interaction',
 		blurb:

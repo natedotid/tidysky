@@ -9,6 +9,9 @@ const NEGATABLE_KINDS = [
 	'gone',
 	'followsYou',
 	'followsMoreThan',
+	'hiddenByList',
+	'blocksYou',
+	'noKnownFollowers',
 	'followedDaysAgo',
 	'noInteraction',
 	'interactionsAtLeast'
@@ -60,6 +63,9 @@ describe('the filter options table', () => {
 		expect(labels('Following')).toEqual([
 			'Follows you back',
 			"Doesn't follow you back",
+			'Hidden by a list',
+			'Blocks you',
+			'Followed by no one you follow',
 			'Follows more than 1,000',
 			'Follows more than 2,000',
 			'Follows more than 5,000',

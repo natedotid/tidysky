@@ -82,6 +82,33 @@ export const FILTER_KINDS: FilterKind[] = [
 		keyOf: (c) => (c.kind === 'followsYou' ? (c.negate === true ? 'no' : 'yes') : null)
 	},
 	{
+		kind: 'hiddenByList',
+		section: 'Following',
+		negatable: true,
+		values: [{ key: 'list', label: 'Hidden by a list', clause: { kind: 'hiddenByList' } }],
+		keyOf: (c) => (c.kind === 'hiddenByList' ? 'list' : null)
+	},
+	{
+		kind: 'blocksYou',
+		section: 'Following',
+		negatable: true,
+		values: [{ key: 'you', label: 'Blocks you', clause: { kind: 'blocksYou' } }],
+		keyOf: (c) => (c.kind === 'blocksYou' ? 'you' : null)
+	},
+	{
+		kind: 'noKnownFollowers',
+		section: 'Following',
+		negatable: true,
+		values: [
+			{
+				key: 'none',
+				label: 'Followed by no one you follow',
+				clause: { kind: 'noKnownFollowers' }
+			}
+		],
+		keyOf: (c) => (c.kind === 'noKnownFollowers' ? 'none' : null)
+	},
+	{
 		kind: 'followsMoreThan',
 		section: 'Following',
 		negatable: true,

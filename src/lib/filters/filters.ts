@@ -12,6 +12,7 @@ import { daysSince } from '#lib/scan/estimate';
 import { plural } from '#lib/format';
 import { interactionCount } from '#lib/insights/following';
 import type { FollowAccount } from '#lib/scan/types';
+import { blocksYou, hiddenByList } from '#lib/scan/viewer';
 
 export type Clause =
 	| { kind: 'quiet'; days: number } // active status, newest activity older than N days (or none in the sample)
@@ -32,6 +33,9 @@ export type Clause =
 	| { kind: 'interactionsAtLeast'; n: number } // checked, and the interaction count is at least n
 	| { kind: 'noAvatar' }
 	| { kind: 'noBio' }
+	| { kind: 'hiddenByList' } // muted or blocked by a moderation list (viewer not read: null)
+	| { kind: 'blocksYou' } // they block you (viewer not read: null)
+	| { kind: 'noKnownFollowers' } // the mutual count is 0 (viewer not read: null)
 	| { kind: 'text'; q: string } // case-insensitive in handle, displayName, description
 	| { kind: 'inSet'; dids: string[]; label: string }; // internal (from "Since your last scan"); not user-editable
 
@@ -115,6 +119,16 @@ export function evalClause(a: FollowAccount, c: Clause, now: Date): boolean | nu
 			return a.avatar === null;
 		case 'noBio':
 			return a.description === null;
+		// The viewer comes from the signed-in profile read; rows without it
+		// (older scans, the public path) are unknown to all three clauses.
+		case 'hiddenByList':
+			return a.viewer === null ? null : hiddenByList(a.viewer);
+		case 'blocksYou':
+			return a.viewer === null ? null : blocksYou(a.viewer);
+		case 'noKnownFollowers': {
+			if (a.viewer === null || a.viewer.knownFollowers === null) return null;
+			return a.viewer.knownFollowers === 0;
+		}
 		case 'text': {
 			const q = c.q.trim().toLowerCase();
 			if (q === '') return false;
@@ -204,6 +218,12 @@ export function describeClause(c: FilterClause): string {
 			return 'No avatar';
 		case 'noBio':
 			return 'No bio';
+		case 'hiddenByList':
+			return c.negate ? 'Not hidden by a list' : 'Hidden by a list';
+		case 'blocksYou':
+			return c.negate ? "Doesn't block you" : 'Blocks you';
+		case 'noKnownFollowers':
+			return c.negate ? 'Followed by someone you follow' : 'Followed by no one you follow';
 		case 'text':
 			return `Matches "${c.q}"`;
 		case 'inSet':
