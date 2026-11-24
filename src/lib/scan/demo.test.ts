@@ -155,6 +155,37 @@ describe('generateDemoData', () => {
 		expect(high).toBeGreaterThanOrEqual(5);
 	});
 
+	it('gives every followed profile a viewer reading, with a few hidden or blocking', () => {
+		const data = generateDemoData(42, COUNT, NOW);
+		// The followed profiles: everything except the unfollowed-elsewhere seed.
+		const dropped = new Set(data.droppedElsewhere);
+		const followed = data.profiles.filter((p) => !dropped.has(p.did));
+		expect(followed.length).toBeGreaterThan(0);
+		for (const p of followed) expect(p.viewer, p.did).not.toBeNull();
+
+		const muted = followed.filter((p) => p.viewer?.mutedByList?.name === 'Sports spoilers').length;
+		const listBlocked = followed.filter(
+			(p) => p.viewer?.blockingByList?.name === 'Reply guys'
+		).length;
+		const blocksYou = followed.filter((p) => p.viewer?.blockedBy === true).length;
+		expect(muted).toBeGreaterThanOrEqual(4);
+		expect(muted).toBeLessThanOrEqual(6);
+		expect(listBlocked).toBeGreaterThanOrEqual(1);
+		expect(listBlocked).toBeLessThanOrEqual(3);
+		expect(blocksYou).toBeGreaterThanOrEqual(2);
+		expect(blocksYou).toBeLessThanOrEqual(4);
+
+		// About 10% of the follows are followed by no one you follow.
+		const zero = followed.filter((p) => p.viewer?.knownFollowers === 0).length;
+		expect(zero / followed.length).toBeGreaterThan(0.05);
+		expect(zero / followed.length).toBeLessThan(0.2);
+
+		// A blockedBy follow has no follow-back reading, like the live path.
+		for (const p of followed) {
+			if (p.viewer?.blockedBy === true) expect(p.followsYou).toBeNull();
+		}
+	});
+
 	it('the posting rate is a long tail: a top firehose, ~25 accounts write half', () => {
 		const accounts = accountsWithActivity();
 		const share = feedShare(accounts);

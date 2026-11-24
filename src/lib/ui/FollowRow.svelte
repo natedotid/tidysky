@@ -54,6 +54,15 @@
 		if (account.status === 'deactivated') return 'Deactivated';
 		if (account.status === 'takendown') return 'Suspended';
 		if (account.status === 'gone') return 'Gone';
+		// A list or block hides the account: say why, instead of the stats.
+		const v = account.viewer;
+		if (v !== null) {
+			const why: string[] = [];
+			if (v.blockedBy) why.push('Blocks you');
+			if (v.mutedByList !== null) why.push(`Muted by list: ${v.mutedByList.name}`);
+			if (v.blockingByList !== null) why.push(`Blocked by list: ${v.blockingByList.name}`);
+			if (why.length > 0) return why.join(' · ');
+		}
 		const last = account.activity === null ? '—' : relativeDays(account.activity.lastActiveAt);
 		const r = account.activity === null ? '—' : rate(account.activity.itemsPerDay);
 		const back = account.followsYou === true ? ' · follows you' : '';

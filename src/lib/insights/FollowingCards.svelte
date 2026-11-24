@@ -24,10 +24,12 @@
 		followBackTakeaway,
 		followedByMonth,
 		followedInLastDays,
+		hiddenFromYou,
 		interactionBuckets,
 		interactionCount,
 		leastActive,
 		leastInteracted,
+		listHref,
 		mostActive,
 		mostInteracted,
 		sizeDistribution,
@@ -317,6 +319,16 @@
 	}
 	const backTakeaway = $derived(followBackTakeaway(back));
 
+	// --- hidden from you
+	const hid = $derived(hiddenFromYou(accounts));
+	const hiddenTakeaway = $derived.by((): string | null => {
+		// An older scan has no viewer readings: the card body asks for a
+		// rescan, so there is no takeaway.
+		if (!hid.read) return null;
+		if (hid.hidden === 0) return 'None of the people you follow are hidden by a list';
+		return `${plural(hid.hidden, 'person you follow is', 'people you follow are')} hidden by a list you subscribe to`;
+	});
+
 	// --- when you followed them
 	const monthFmt = new Intl.DateTimeFormat(undefined, { month: 'short', year: '2-digit' });
 	function monthLabel(key: string): string {
@@ -507,6 +519,50 @@
 		/>
 	</Card>
 
+	<Card
+		title="Hidden from you"
+		takeaway={hiddenTakeaway ?? undefined}
+		footnote={note(
+			'Lists you subscribe to win over follows. To see someone again, unsubscribe from the list on Bluesky.'
+		)}
+		action={hid.read && hid.hidden > 0
+			? { label: 'See them in Clean up →', href: 'cleanup?preset=hiddenByList' }
+			: undefined}
+	>
+		{#if hid.read}
+			{#if hid.lists.length > 0}
+				<ul class="hidden-list" aria-label="The lists hiding people you follow">
+					{#each hid.lists as l (l.uri + l.kind)}
+						<li>
+							{#if listHref(l.uri) !== null}
+								<a href={listHref(l.uri)} target="_blank" rel="external noopener noreferrer"
+									>{l.name}</a
+								>
+							{:else}
+								{l.name}
+							{/if}
+							<span class="hides">
+								{l.kind === 'mute' ? 'mutes' : 'blocks'}
+								{l.count}
+								{l.count === 1 ? 'follow' : 'follows'}</span
+							>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+			{#if hid.blocksYou > 0}
+				<a class="blocks-line" href={resolve('cleanup?preset=blocksYou')}
+					>{plural(hid.blocksYou, 'person', 'people')}
+					block you</a
+				>
+			{:else}
+				<p class="blocks-line plain">No one you follow blocks you.</p>
+			{/if}
+		{:else}
+			<p class="empty">Scan again to check for follows hidden by a list or blocking you.</p>
+		{/if}
+	</Card>
+
 	<Card title="When you followed them" takeaway={monthTakeaway} footnote={note(null)}>
 		<BarChart
 			rows={monthRows}
@@ -567,5 +623,53 @@
 		margin: var(--space-sm) 0 0;
 		font-size: var(--text-sm);
 		color: var(--color-text-muted);
+	}
+
+	/* "Hidden from you": one row per hiding list. */
+	.hidden-list {
+		margin: 0 0 var(--space-sm);
+		padding: 0;
+		list-style: none;
+	}
+	.hidden-list li {
+		font-size: var(--text-sm);
+		padding: 4px 0;
+		border-bottom: 1px solid var(--color-border);
+		min-width: 0;
+	}
+	.hidden-list li:last-child {
+		border-bottom: none;
+	}
+	.hidden-list a {
+		color: var(--color-link);
+		text-decoration: none;
+		font-weight: 600;
+	}
+	.hidden-list a:hover {
+		text-decoration: underline;
+		color: var(--color-link-hover);
+	}
+	.hidden-list .hides {
+		color: var(--color-text-muted);
+	}
+	.blocks-line {
+		display: inline-block;
+		margin: 0;
+		font-size: var(--text-sm);
+		color: var(--color-link);
+		text-decoration: none;
+		font-weight: 600;
+		min-height: var(--tap);
+		line-height: var(--tap);
+	}
+	a.blocks-line:hover {
+		text-decoration: underline;
+		color: var(--color-link-hover);
+	}
+	.blocks-line.plain {
+		color: var(--color-text-muted);
+		font-weight: 400;
+		line-height: inherit;
+		min-height: 0;
 	}
 </style>

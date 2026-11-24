@@ -5,7 +5,8 @@ import type {
 	ActivitySummary,
 	FollowAccount,
 	InteractionKind,
-	InteractionSummary
+	InteractionSummary,
+	ProfileViewer
 } from '#lib/scan/types';
 import {
 	activityBuckets,
@@ -14,6 +15,8 @@ import {
 	followBackTakeaway,
 	followedByMonth,
 	followedInLastDays,
+	hiddenFromYou,
+	listHref,
 	interactionBuckets,
 	interactionCount,
 	leastActive,
@@ -681,6 +684,78 @@ describe('followBackTakeaway', () => {
 
 	it('is null when nothing is known', () => {
 		expect(followBackTakeaway({ yes: 0, no: 0, unknown: 10 })).toBeNull();
+	});
+});
+
+const sportsList = { uri: 'at://did:plc:owner/app.bsky.graph.list/rk1', name: 'Sports spoilers' };
+const replyList = { uri: 'at://did:plc:owner/app.bsky.graph.list/rk2', name: 'Reply guys' };
+
+function viewer(over: Partial<ProfileViewer> = {}): ProfileViewer {
+	return {
+		mutedByList: null,
+		blockingByList: null,
+		blockedBy: false,
+		blockingPersonally: false,
+		knownFollowers: null,
+		...over
+	};
+}
+
+describe('hiddenFromYou', () => {
+	it('counts the hidden active follows, one row per list, largest first', () => {
+		const accounts = [
+			acct({ did: 'a', viewer: viewer({ mutedByList: sportsList }) }),
+			acct({ did: 'b', viewer: viewer({ mutedByList: sportsList }) }),
+			acct({ did: 'c', viewer: viewer({ mutedByList: sportsList }) }),
+			acct({ did: 'd', viewer: viewer({ blockingByList: replyList }) }),
+			acct({ did: 'e', viewer: viewer({ blockedBy: true }) }),
+			acct({ did: 'f', viewer: viewer() }),
+			// A dead follow is not an active follow: it does not count.
+			acct({ did: 'g', status: 'gone', viewer: viewer({ mutedByList: sportsList }) }),
+			// No viewer reading at all: the scan is not readable.
+			acct({ did: 'h' })
+		];
+		const s = hiddenFromYou(accounts);
+		expect(s.read).toBe(false);
+		expect(s.hidden).toBe(4);
+		expect(s.blocksYou).toBe(1);
+		expect(s.lists).toEqual([
+			{ uri: sportsList.uri, name: 'Sports spoilers', kind: 'mute', count: 3 },
+			{ uri: replyList.uri, name: 'Reply guys', kind: 'block', count: 1 }
+		]);
+	});
+
+	it('is readable when every active follow has a viewer', () => {
+		const s = hiddenFromYou([
+			acct({ did: 'a', viewer: viewer() }),
+			acct({ did: 'b', viewer: viewer({ blockedBy: true }) }),
+			acct({ did: 'g', status: 'gone' }) // dead: no reading needed
+		]);
+		expect(s.read).toBe(true);
+		expect(s.hidden).toBe(0);
+		expect(s.blocksYou).toBe(1);
+	});
+
+	it('counts one follow once, whatever lists hide it', () => {
+		const s = hiddenFromYou([
+			acct({
+				did: 'a',
+				viewer: viewer({ mutedByList: sportsList, blockingByList: replyList })
+			})
+		]);
+		expect(s.hidden).toBe(1);
+		expect(s.lists).toHaveLength(2);
+	});
+});
+
+describe('listHref', () => {
+	it('builds the bsky.app list page from the list URI', () => {
+		expect(listHref(sportsList.uri)).toBe('https://bsky.app/profile/did:plc:owner/lists/rk1');
+	});
+
+	it('is null for a URI that is not a list record', () => {
+		expect(listHref('at://did:plc:owner/app.bsky.feed.post/rk1')).toBeNull();
+		expect(listHref('did:plc:owner')).toBeNull();
 	});
 });
 

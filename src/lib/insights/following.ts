@@ -414,3 +414,70 @@ export function followedInLastDays(accounts: FollowAccount[], now: Date, days: n
 	}
 	return n;
 }
+
+/** One hiding list and how many of the active follows it hides. */
+export interface HiddenListRow {
+	uri: string; // the list's URI (at://owner/app.bsky.graph.list/rkey)
+	name: string;
+	kind: 'mute' | 'block';
+	count: number;
+}
+
+/** The "Hidden from you" card's numbers, over the active follows only. */
+export interface HiddenSummary {
+	/**
+	 * Every active follow has a viewer reading. False for a stored scan
+	 * written before the viewer field existed (or one whose profile read is
+	 * incomplete): the card asks for a rescan instead of showing numbers.
+	 */
+	read: boolean;
+	/** Active follows hidden by at least one list you subscribe to. */
+	hidden: number;
+	/** One row per hiding list, by count, largest first. */
+	lists: HiddenListRow[];
+	/** Active follows that block you. */
+	blocksYou: number;
+}
+
+export function hiddenFromYou(accounts: FollowAccount[]): HiddenSummary {
+	const active = accounts.filter((a) => a.status === 'active');
+	let read = active.length > 0;
+	const byList = new Map<string, HiddenListRow>();
+	const hiddenDids = new Set<string>();
+	let blocks = 0;
+	for (const a of active) {
+		const v = a.viewer;
+		if (v === null) {
+			read = false;
+			continue;
+		}
+		if (v.blockedBy) blocks += 1;
+		const hiding: Array<{
+			list: { uri: string; name: string };
+			kind: 'mute' | 'block';
+		}> = [];
+		if (v.mutedByList !== null) hiding.push({ list: v.mutedByList, kind: 'mute' });
+		if (v.blockingByList !== null) hiding.push({ list: v.blockingByList, kind: 'block' });
+		for (const h of hiding) {
+			hiddenDids.add(a.did);
+			const key = `${h.list.uri}:${h.kind}`;
+			const row = byList.get(key);
+			if (row === undefined)
+				byList.set(key, { uri: h.list.uri, name: h.list.name, kind: h.kind, count: 1 });
+			else row.count += 1;
+		}
+	}
+	const lists = [...byList.values()].sort((x, y) => y.count - x.count);
+	return { read, hidden: hiddenDids.size, lists, blocksYou: blocks };
+}
+
+/**
+ * The bsky.app page for a list URI (`at://owner/app.bsky.graph.list/rkey`):
+ * the owner DID and the rkey both come from the URI. Null when the URI is
+ * not a list record.
+ */
+export function listHref(uri: string): string | null {
+	const parts = uri.replace(/^at:\/\//, '').split('/');
+	if (parts.length !== 3 || parts[1] !== 'app.bsky.graph.list') return null;
+	return `https://bsky.app/profile/${parts[0]}/lists/${parts[2]}`;
+}

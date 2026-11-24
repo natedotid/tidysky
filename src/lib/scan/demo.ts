@@ -21,7 +21,7 @@ import type {
 	OwnRecord,
 	ProfileLite
 } from './source';
-import type { FollowAccount, Snapshot } from './types';
+import type { FollowAccount, ProfileViewer, Snapshot } from './types';
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
@@ -284,6 +284,29 @@ export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): De
 	const rkey = (i: number): string =>
 		`3${(i * 7919 + Math.floor(rand() * 1e6)).toString(36)}${didPart().slice(0, 5)}`;
 
+	// The viewer readings (list mutes, blocks, mutuals) come from a separate
+	// stream, so this mix never moves the ratios the main stream pins.
+	const viewerRand = mulberry32(seed * 48109 + 37);
+	const vPart = (n: number): string => {
+		let s = '';
+		for (let i = 0; i < n; i += 1)
+			s += DID_ALPHABET[Math.floor(viewerRand() * DID_ALPHABET.length)];
+		return s;
+	};
+	const sportsSpoilers = {
+		uri: `at://did:plc:${vPart(27)}/app.bsky.graph.list/${vPart(24)}`,
+		name: 'Sports spoilers'
+	};
+	const replyGuys = {
+		uri: `at://did:plc:${vPart(27)}/app.bsky.graph.list/${vPart(24)}`,
+		name: 'Reply guys'
+	};
+	// A few of the follows are hidden by lists or block you; the rest are
+	// plain. The first surviving follows take these, in this order.
+	let mutedLeft = 5;
+	let listBlockedLeft = 2;
+	let blocksYouLeft = 3;
+
 	const feeds = new Map<string, AuthorFeedResult>();
 	const profiles: ProfileLite[] = [];
 	const follows: FollowRecord[] = [];
@@ -387,7 +410,7 @@ export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): De
 
 		const farm = rand() < 0.03;
 		const spam = rand() < 0.01;
-		const followsYou = rand() < 0.35;
+		let followsYou: boolean | null = rand() < 0.35;
 
 		let items: FeedItemLite[];
 		let exhausted = true;
@@ -426,6 +449,30 @@ export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): De
 		feeds.set(did, { ok: true, items, exhausted });
 		meta.push({ did, rate });
 
+		// The signed-in read's view of the follow: most are plain, a few are
+		// hidden by a moderation list or block you. While a block applies,
+		// follow-back is unknown, like in the live read.
+		const viewer: ProfileViewer = {
+			mutedByList: null,
+			blockingByList: null,
+			blockedBy: false,
+			blockingPersonally: false,
+			knownFollowers: Math.round(viewerRand() * 40)
+		};
+		if (mutedLeft > 0) {
+			viewer.mutedByList = sportsSpoilers;
+			mutedLeft -= 1;
+		} else if (listBlockedLeft > 0) {
+			viewer.blockingByList = replyGuys;
+			listBlockedLeft -= 1;
+		} else if (blocksYouLeft > 0) {
+			viewer.blockedBy = true;
+			followsYou = null;
+			blocksYouLeft -= 1;
+		}
+		// About 10% of the follows are followed by no one you follow.
+		if (viewerRand() < 0.1) viewer.knownFollowers = 0;
+
 		profiles.push({
 			did,
 			handle,
@@ -437,7 +484,7 @@ export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): De
 			followsCount: farm ? Math.round(between(5000, 9000)) : Math.round(between(50, 2000)),
 			postsCount,
 			followsYou,
-			viewer: null,
+			viewer,
 			labels: spam ? ['spam'] : []
 		});
 	}
