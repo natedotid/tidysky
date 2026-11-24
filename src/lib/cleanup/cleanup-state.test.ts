@@ -19,6 +19,7 @@ function acc(over: Partial<FollowAccount> = {}): FollowAccount {
 		followsCount: null,
 		postsCount: null,
 		followsYou: null,
+		viewer: null,
 		labels: [],
 		status: 'active',
 		activity: null,

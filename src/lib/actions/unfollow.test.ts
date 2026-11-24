@@ -21,6 +21,7 @@ function account(did: string, rkeys: string[]): FollowAccount {
 		followsCount: null,
 		postsCount: null,
 		followsYou: null,
+		viewer: null,
 		labels: [],
 		status: 'active',
 		activity: null,

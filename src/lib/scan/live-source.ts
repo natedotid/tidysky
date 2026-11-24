@@ -13,6 +13,7 @@ import { HttpError } from '#lib/net/errors';
 import { authQueue, publicQueue, type RequestQueue } from '#lib/net/queue';
 
 import { classifyFeedItem, firstMediaAlt, type FeedItemLite } from './classify';
+import { blockApplies, viewerFromProfile } from './viewer';
 import type {
 	AuthorFeedResult,
 	DataSource,
@@ -82,6 +83,8 @@ type DetailedProfile = {
 	followsCount?: number;
 	postsCount?: number;
 	labels?: Array<{ val: string }>;
+	/** Only on the signed-in read; the public AppView returns no viewer. */
+	viewer?: unknown;
 };
 
 function toProfileLite(p: DetailedProfile, followsYou: boolean | null): ProfileLite {
@@ -96,6 +99,7 @@ function toProfileLite(p: DetailedProfile, followsYou: boolean | null): ProfileL
 		followsCount: p.followsCount ?? null,
 		postsCount: p.postsCount ?? null,
 		followsYou,
+		viewer: viewerFromProfile(p),
 		labels: (p.labels ?? []).map((l) => l.val)
 	};
 }
@@ -250,6 +254,10 @@ export class LiveSource implements DataSource {
 			// "doesn't follow you": a false default would make it an unfollow
 			// candidate.
 			p.followsYou = followsYouByDid.get(p.did) ?? null;
+			// While a block applies, the relationship read can't be trusted:
+			// keep follow-back unknown so the account can't land in
+			// "Doesn't follow back".
+			if (blockApplies(p.viewer)) p.followsYou = null;
 		}
 		return base;
 	}

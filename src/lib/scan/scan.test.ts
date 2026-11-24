@@ -166,6 +166,7 @@ function account(did: string, overrides: Partial<FollowAccount> = {}): FollowAcc
 		followsCount: null,
 		postsCount: null,
 		followsYou: null,
+		viewer: null,
 		labels: [],
 		status: 'unknown',
 		activity: null,
@@ -188,6 +189,7 @@ function profile(did: string, handle: string): ProfileLite {
 		followsCount: null,
 		postsCount: null,
 		followsYou: false,
+		viewer: null,
 		labels: []
 	};
 }

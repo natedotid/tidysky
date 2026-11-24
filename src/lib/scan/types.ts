@@ -21,6 +21,26 @@ export interface ActivitySummary {
 	medianWords: number; // non-reposts; 0 if none
 }
 
+/**
+ * What the signed-in profile read says about how this account relates to
+ * the user's moderation lists and blocks. A list mute or list block hides
+ * the account whatever the follows say; while any block applies the
+ * follow-back fields are absent, so follow-back is unknown. `null` = not
+ * read (the public path, or a row from an older scan).
+ */
+export interface ProfileViewer {
+	/** Muted by a moderation list the user subscribes to. */
+	mutedByList: { uri: string; name: string } | null;
+	/** Blocked by a moderation list the user subscribes to. */
+	blockingByList: { uri: string; name: string } | null;
+	/** They block the user. */
+	blockedBy: boolean;
+	/** The user blocks them personally (a list block is blockingByList). */
+	blockingPersonally: boolean;
+	/** How many of the user's follows they also follow; null = unknown. */
+	knownFollowers: number | null;
+}
+
 /** How the user last interacted with an account, from their own records. */
 export type InteractionKind = 'like' | 'repost' | 'reply' | 'quote' | 'mention';
 
@@ -44,6 +64,7 @@ export interface FollowAccount {
 	followsCount: number | null;
 	postsCount: number | null;
 	followsYou: boolean | null; // null = unknown
+	viewer: ProfileViewer | null; // list mutes/blocks, blockedBy, mutuals; null = not read
 	labels: string[]; // label values, e.g. "spam"
 	status: AccountStatus;
 	activity: ActivitySummary | null;

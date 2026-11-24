@@ -186,6 +186,7 @@ export async function runScan(
 				followsCount: null,
 				postsCount: null,
 				followsYou: null,
+				viewer: null,
 				labels: [],
 				status: 'unknown',
 				activity: null,
@@ -248,6 +249,9 @@ export async function runScan(
 				row.followsCount = p.followsCount;
 				row.postsCount = p.postsCount;
 				row.followsYou = p.followsYou;
+				// Each scan replaces the stored reading, so an unblocked or
+				// un-muted account clears on the next profile fetch.
+				row.viewer = p.viewer;
 				row.labels = p.labels;
 				row.status = 'active';
 				row.profileScannedAt = nowIso();

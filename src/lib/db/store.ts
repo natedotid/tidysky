@@ -167,9 +167,14 @@ export async function openStore(did: string): Promise<Store> {
 
 	return {
 		// Rows written before 1.1 have no `interaction` property at all; read
-		// them as "not checked yet".
+		// them as "not checked yet". Rows written before the viewer field
+		// exists are the same: read them as "not read".
 		getAllAccounts: async () =>
-			(await db.getAll('accounts')).map((r) => ({ ...r, interaction: r.interaction ?? null })),
+			(await db.getAll('accounts')).map((r) => ({
+				...r,
+				interaction: r.interaction ?? null,
+				viewer: r.viewer ?? null
+			})),
 		putAccounts: async (rows) => {
 			const tx = db.transaction('accounts', 'readwrite');
 			for (const row of rows) await tx.store.put(row);

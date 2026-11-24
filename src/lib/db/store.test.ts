@@ -40,6 +40,7 @@ function account(did: string, overrides: Partial<FollowAccount> = {}): FollowAcc
 		followsCount: null,
 		postsCount: null,
 		followsYou: null,
+		viewer: null,
 		labels: [],
 		status: 'active',
 		activity: null,
@@ -60,17 +61,19 @@ describe('accounts', () => {
 		expect(all.find((a) => a.did === 'did:plc:a')?.followRkeys).toEqual(['rkey1']);
 	});
 
-	it('reads a pre-1.1 row (no interaction property) as interaction: null', async () => {
+	it('reads a row written by an earlier release (no interaction or viewer) as null for both', async () => {
 		const { store, did } = await fresh();
-		// Write a raw row without the 1.1 property, like a 1.0.x database.
+		// Write a raw row without the newer properties, like an older database.
 		const raw = await openDB(`tidysky:${did}`);
 		const row = account(did);
 		delete (row as Partial<FollowAccount>).interaction;
+		delete (row as Partial<FollowAccount>).viewer;
 		await raw.put('accounts', row);
 		const all = await store.getAllAccounts();
 		expect(all).toHaveLength(1);
 		expect(all[0].did).toBe(did);
 		expect(all[0].interaction).toBeNull();
+		expect(all[0].viewer).toBeNull();
 	});
 
 	it('deleteAccounts removes only the named DIDs', async () => {

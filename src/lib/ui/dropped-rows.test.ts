@@ -16,6 +16,7 @@ function profile(did: string): ProfileLite {
 		followsCount: null,
 		postsCount: null,
 		followsYou: false,
+		viewer: null,
 		labels: []
 	};
 }

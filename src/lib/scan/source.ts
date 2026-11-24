@@ -5,7 +5,7 @@
  */
 
 import type { EmbedKind, FeedItemLite, ItemKind } from './classify';
-import type { AccountStatus } from './types';
+import type { AccountStatus, ProfileViewer } from './types';
 
 export interface FollowRecord {
 	did: string;
@@ -33,6 +33,8 @@ export interface ProfileLite {
 	followsCount: number | null;
 	postsCount: number | null;
 	followsYou: boolean | null;
+	/** The signed-in read's view of list mutes/blocks and mutuals; null = not read. */
+	viewer: ProfileViewer | null;
 	labels: string[];
 }
 

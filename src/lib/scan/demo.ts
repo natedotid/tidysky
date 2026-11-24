@@ -437,6 +437,7 @@ export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): De
 			followsCount: farm ? Math.round(between(5000, 9000)) : Math.round(between(50, 2000)),
 			postsCount,
 			followsYou,
+			viewer: null,
 			labels: spam ? ['spam'] : []
 		});
 	}
@@ -462,6 +463,7 @@ export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): De
 			followsCount: Math.round(between(50, 2000)),
 			postsCount: Math.round(between(1, 900)),
 			followsYou: rand() < 0.5,
+			viewer: null,
 			labels: []
 		});
 	}
@@ -479,6 +481,7 @@ export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): De
 		followsCount: count,
 		postsCount: 2400,
 		followsYou: null,
+		viewer: null,
 		labels: []
 	};
 
@@ -565,6 +568,7 @@ export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): De
 				followsCount,
 				postsCount,
 				followsYou: true,
+				viewer: null,
 				labels
 			});
 		}

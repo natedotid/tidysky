@@ -47,6 +47,7 @@ function profile(over: Partial<ProfileLite> = {}): ProfileLite {
 		followsCount: null,
 		postsCount: null,
 		followsYou: null,
+		viewer: null,
 		labels: [],
 		...over
 	};
@@ -66,6 +67,7 @@ function acct(over: Partial<FollowAccount> = {}): FollowAccount {
 		followsCount: null,
 		postsCount: null,
 		followsYou: null,
+		viewer: null,
 		labels: [],
 		status: 'active',
 		activity: null,

@@ -38,6 +38,7 @@ function account(over: Partial<FollowAccount> = {}): FollowAccount {
 		followsCount: 20,
 		postsCount: 30,
 		followsYou: null,
+		viewer: null,
 		labels: [],
 		status: 'active',
 		activity: null,

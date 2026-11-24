@@ -18,6 +18,7 @@ function acc(did: string, status: FollowAccount['status']): FollowAccount {
 		followsCount: null,
 		postsCount: null,
 		followsYou: null,
+		viewer: null,
 		labels: [],
 		status,
 		activity: null,
@@ -39,6 +40,7 @@ function profile(did: string, handle?: string): ProfileLite {
 		followsCount: null,
 		postsCount: null,
 		followsYou: null,
+		viewer: null,
 		labels: []
 	};
 }
