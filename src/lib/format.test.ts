@@ -29,22 +29,25 @@ describe('relativeDays', () => {
 });
 
 describe('rate', () => {
+	it('shows a dash for null', () => {
+		expect(rate(null)).toBe('—');
+	});
+
+	it('keeps zero plain and shows a positive rate below 0.05 as under 0.1', () => {
+		expect(rate(0)).toBe('0/day');
+		expect(rate(0.01)).toBe('<0.1/day');
+		expect(rate(0.049)).toBe('<0.1/day');
+		expect(rate(0.05)).toBe('0.1/day');
+	});
+
 	it('formats the expected values', () => {
 		expect(rate(0.2)).toBe('0.2/day');
+		expect(rate(0.5)).toBe('0.5/day');
+		expect(rate(1)).toBe('1/day');
 		expect(rate(3)).toBe('3/day');
+		expect(rate(39.6)).toBe('40/day');
 		expect(rate(40)).toBe('40+/day');
 		expect(rate(45.3)).toBe('40+/day');
-	});
-
-	it('rounds whole rates and keeps one decimal below one', () => {
-		expect(rate(0)).toBe('0/day');
-		expect(rate(0.02)).toBe('0/day');
-		expect(rate(3.6)).toBe('4/day');
-		expect(rate(0.25)).toBe('0.3/day');
-	});
-
-	it('is "—" for null', () => {
-		expect(rate(null)).toBe('—');
 	});
 });
 

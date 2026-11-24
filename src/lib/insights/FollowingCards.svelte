@@ -201,12 +201,17 @@
 	/** The row value, e.g. "54/day" (the "Most active" cards' format). */
 	function perDay(a: FollowAccount): string {
 		const v = a.activity?.itemsPerDay ?? 0;
-		return `${v < 1 ? v.toFixed(1) : Math.round(v)}/day`;
+		if (v >= 1) return `${Math.round(v)}/day`;
+		// A positive rate that rounds to 0.0 reads like "never posts".
+		if (v > 0 && v.toFixed(1) === '0.0') return '<0.1/day';
+		return `${v.toFixed(1)}/day`;
 	}
 	/** The row value in words, for the row's screen-reader label. */
 	function perDayWords(a: FollowAccount): string {
 		const v = a.activity?.itemsPerDay ?? 0;
-		return `${v < 1 ? v.toFixed(1) : Math.round(v)} posts a day`;
+		if (v >= 1) return `${Math.round(v)} posts a day`;
+		if (v > 0 && v.toFixed(1) === '0.0') return 'under 0.1 posts a day';
+		return `${v.toFixed(1)} posts a day`;
 	}
 	const mostIxRows = $derived(
 		mostIx.map((a) => ({

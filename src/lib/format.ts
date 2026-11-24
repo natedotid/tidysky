@@ -13,13 +13,14 @@ export function relativeDays(iso: string | null, now: Date = new Date()): string
 	return `${Math.floor(days / 365)}y ago`;
 }
 
-/** "0.2/day", "3/day", "40+/day" for 40 and up; null shows a dash. */
+/** "0/day", "<0.1/day", "0.2/day", "3/day", "40+/day" for 40 and up; null shows a dash. */
 export function rate(n: number | null): string {
 	if (n === null) return '—';
 	if (n >= 40) return '40+/day';
 	if (n >= 1) return `${Math.round(n)}/day`;
 	const s = n.toFixed(1);
-	return s === '0.0' ? '0/day' : `${s}/day`;
+	if (s === '0.0') return n === 0 ? '0/day' : '<0.1/day';
+	return `${s}/day`;
 }
 
 /** "1 like" / "54 likes": the singular word when n is 1. */
