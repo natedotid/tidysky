@@ -7,7 +7,7 @@ import { interactionCount } from '#lib/insights/following';
 import type { FollowAccount } from '#lib/scan/types';
 
 export const CSV_HEADER =
-	'did,handle,display_name,status,last_active,items_per_day,follows_you,followed_at,followers,follows,posts,last_interaction_at,last_interaction_kind,interaction_count,reasons';
+	'did,handle,display_name,status,last_active,items_per_day,follows_you,followed_at,followers,follows,posts,last_interaction_at,last_interaction_kind,interaction_count,reasons,hidden_by_list,blocks_you,known_followers';
 
 /** One cell: RFC 4180 quoting, plus a `'` prefix against formula injection. */
 function cell(value: string | number | null): string {
@@ -36,7 +36,17 @@ export function toCsv(accounts: FollowAccount[], spec: FilterSpec, now: Date): s
 			a.interaction?.lastAt ?? '',
 			a.interaction?.lastKind ?? '',
 			interactionCount(a),
-			reasons(a, spec, now).join(' · ')
+			reasons(a, spec, now).join(' · '),
+			// The viewer columns: the hiding list's name (both, when both
+			// apply), blocks you as yes/no, and the mutual count. Empty when
+			// the viewer was not read (older scans, the public path).
+			a.viewer === null
+				? ''
+				: [a.viewer.mutedByList?.name, a.viewer.blockingByList?.name]
+						.filter((n): n is string => n !== undefined)
+						.join('; '),
+			a.viewer === null ? '' : a.viewer.blockedBy ? 'yes' : 'no',
+			a.viewer?.knownFollowers ?? ''
 		]
 			.map(cell)
 			.join(',')

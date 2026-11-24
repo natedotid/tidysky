@@ -86,6 +86,18 @@
 	</section>
 
 	<section class="card">
+		<h2>Hidden by a list and blocks</h2>
+		<p>
+			The profile data Bluesky returns for a signed-in account also says which of the people it
+			follows are muted or blocked by a moderation list it subscribes to, and which of them block
+			it. TidySky reads that from the same profile read it already does, so it needs no extra
+			permission. A list mute or list block wins over a follow: the account is counted as hidden,
+			not as a follow that doesn't follow back. While a block applies in either direction,
+			follow-back is unknown, so TidySky never guesses it.
+		</p>
+	</section>
+
+	<section class="card">
 		<h2>Why some accounts show as unknown</h2>
 		<p>
 			Now and then a single read fails: a momentary network error, or an account Bluesky doesn't

@@ -52,7 +52,7 @@ function account(over: Partial<FollowAccount> = {}): FollowAccount {
 describe('toCsv', () => {
 	it('emits the exact header row', () => {
 		expect(toCsv([], EMPTY_SPEC, NOW)).toBe(
-			'did,handle,display_name,status,last_active,items_per_day,follows_you,followed_at,followers,follows,posts,last_interaction_at,last_interaction_kind,interaction_count,reasons'
+			'did,handle,display_name,status,last_active,items_per_day,follows_you,followed_at,followers,follows,posts,last_interaction_at,last_interaction_kind,interaction_count,reasons,hidden_by_list,blocks_you,known_followers'
 		);
 		expect(CSV_HEADER).toBe(toCsv([], EMPTY_SPEC, NOW));
 	});
@@ -62,9 +62,10 @@ describe('toCsv', () => {
 		expect(header).toBe(CSV_HEADER);
 		// activity null → last_active, items_per_day empty; followsYou null → empty;
 		// interaction null (unchecked) → both interaction cells and the count empty;
-		// empty spec → reasons empty (trailing comma).
+		// empty spec → reasons empty; viewer null → the three viewer cells empty
+		// (trailing commas).
 		expect(row).toBe(
-			'did:plc:abc123,test.bsky.social,Test,active,,,,2025-01-01T00:00:00Z,10,20,30,,,,'
+			'did:plc:abc123,test.bsky.social,Test,active,,,,2025-01-01T00:00:00Z,10,20,30,,,,,,,'
 		);
 	});
 
@@ -162,7 +163,7 @@ describe('toCsv', () => {
 		// so assert on the raw row rather than splitting it naively.
 		const row = toCsv([account({ displayName: 'A, B' })], EMPTY_SPEC, NOW).split('\n')[1];
 		expect(row).toBe(
-			'did:plc:abc123,test.bsky.social,"A, B",active,,,,2025-01-01T00:00:00Z,10,20,30,,,,'
+			'did:plc:abc123,test.bsky.social,"A, B",active,,,,2025-01-01T00:00:00Z,10,20,30,,,,,,,'
 		);
 	});
 
@@ -212,6 +213,76 @@ describe('toCsv', () => {
 			.split('\n')[1]
 			.split(',');
 		expect(row[14]).toBe('Never posted');
+	});
+
+	it('fills the viewer columns from a signed-in reading', () => {
+		const list = { uri: 'at://did:plc:owner/app.bsky.graph.list/rk1', name: 'Sports spoilers' };
+		const row = toCsv(
+			[
+				account({
+					viewer: {
+						mutedByList: list,
+						blockingByList: null,
+						blockedBy: false,
+						blockingPersonally: false,
+						knownFollowers: 7
+					}
+				})
+			],
+			EMPTY_SPEC,
+			NOW
+		)
+			.split('\n')[1]
+			.split(',');
+		expect(row[15]).toBe('Sports spoilers');
+		expect(row[16]).toBe('no');
+		expect(row[17]).toBe('7');
+	});
+
+	it('names both lists when a follow is muted and blocked by lists', () => {
+		const row = toCsv(
+			[
+				account({
+					viewer: {
+						mutedByList: { uri: 'at://did:plc:o/app.bsky.graph.list/r1', name: 'M' },
+						blockingByList: { uri: 'at://did:plc:o/app.bsky.graph.list/r2', name: 'B' },
+						blockedBy: false,
+						blockingPersonally: false,
+						knownFollowers: null
+					}
+				})
+			],
+			EMPTY_SPEC,
+			NOW
+		)
+			.split('\n')[1]
+			.split(',');
+		expect(row[15]).toBe('M; B');
+		expect(row[16]).toBe('no');
+		expect(row[17]).toBe('');
+	});
+
+	it('maps blocks_you to yes for a blockedBy follow', () => {
+		const row = toCsv(
+			[
+				account({
+					viewer: {
+						mutedByList: null,
+						blockingByList: null,
+						blockedBy: true,
+						blockingPersonally: false,
+						knownFollowers: null
+					}
+				})
+			],
+			EMPTY_SPEC,
+			NOW
+		)
+			.split('\n')[1]
+			.split(',');
+		expect(row[15]).toBe('');
+		expect(row[16]).toBe('yes');
+		expect(row[17]).toBe('');
 	});
 
 	it('writes one line per account', () => {
