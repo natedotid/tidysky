@@ -4,12 +4,12 @@
 	/**
 	 * The shared bottom sheet (Add filter, More presets, unfollowed elsewhere):
 	 * a fixed <dialog> docked to the bottom, 85dvh max, scrolling inside.
-	 * On open, focus goes to the title (tabindex -1, autofocus), not to the
-	 * first focusable element: showModal would focus Close, and Safari draws
-	 * a focus ring on it; the title also tells a screen reader which sheet
-	 * opened. Closes by its header's Close button, a tap on the backdrop, or
-	 * Escape (native); onclose always returns focus to the opener and calls
-	 * onClose.
+	 * On open, focus goes to the title (tabindex -1, focused in code right
+	 * after showModal), not to the first focusable element: showModal would
+	 * focus Close, and Safari draws a focus ring on it; the title also tells
+	 * a screen reader which sheet opened. Closes by its header's Close
+	 * button, a tap on the backdrop, or Escape (native); onclose always
+	 * returns focus to the opener and calls onClose.
 	 */
 	interface Props {
 		open: boolean;
@@ -23,6 +23,8 @@
 	let { open, title, onClose, children }: Props = $props();
 
 	let dialog = $state<HTMLDialogElement | null>(null);
+	/** The header's h2: the sheet focuses it right after showModal. */
+	let titleEl = $state<HTMLElement | null>(null);
 	/**
 	 * Where focus goes when the sheet closes: the element focused when the
 	 * sheet opened (its opener). A modal dialog is supposed to return focus
@@ -56,6 +58,9 @@
 					? ae
 					: lastFocused;
 			dialog.showModal();
+			// showModal focuses the first focusable element (Close); move it
+			// to the title instead.
+			titleEl?.focus();
 		}
 		// The parent may close us straight (open flips false while the dialog
 		// is open); keep the two in sync.
@@ -78,7 +83,7 @@
 <dialog class="sheet" bind:this={dialog} onclose={onSheetClosed} onclick={onDialogClick}>
 	<div class="inner">
 		<header class="head">
-			<h2 tabindex="-1" autofocus>{title}</h2>
+			<h2 bind:this={titleEl} tabindex="-1">{title}</h2>
 			<button type="button" class="close" aria-label="Close" onclick={() => dialog?.close()}>
 				Close
 			</button>
@@ -144,7 +149,7 @@
 	.head h2 {
 		margin: 0;
 		font-size: var(--text-lg);
-		/* Initial focus lands here (autofocus), not on Close; the title must
+		/* The sheet focuses the title on open, not Close; the title must
 			not draw a focus ring for it. Keyboard users reach Close with Tab,
 			and it keeps the global :focus-visible outline. */
 		outline: none;
