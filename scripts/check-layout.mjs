@@ -44,8 +44,10 @@
 // It also opens the profile preview from Clean up's first row (demo mode,
 // one-way preset), phone-like (touch, like the close-behavior checks): no
 // horizontal overflow, focus lands on the sheet's title, and closing returns
-// focus to the row's name button. Run in light and dark, at a phone width
-// (360) and a desktop width (1280), in both browsers.
+// focus to the row's name button; the Mix row sits on its own full-width
+// line under its label, wrapping only between items. Run in light and dark,
+// at the phone widths (360 and 390) and the desktop width (1280), in both
+// browsers.
 //
 // It also opens the bottom sheets and checks them:
 // - presets and unfollowed-elsewhere, open, at 360 and 390 px: no horizontal
@@ -837,6 +839,27 @@ async function checkPreview(page, width, label) {
 		() => document.documentElement.scrollWidth > window.innerWidth + 1
 	);
 	const titleFocused = await sheetFocusOnTitle(page);
+	// The mix row (oneWay rows always carry a sample): on its own line under
+	// the label, full width, wrapping only between items.
+	const mix = await page.evaluate(() => {
+		const fact = document.querySelector('dialog.sheet[open] .fact.mix');
+		if (fact === null) return null;
+		const dt = fact.querySelector('dt');
+		const dd = fact.querySelector('dd');
+		const parts = Array.from(dd.querySelectorAll('.mix-part'));
+		const ddBox = dd.getBoundingClientRect();
+		const listBox = fact.closest('.facts').getBoundingClientRect();
+		return {
+			ownLine: ddBox.top >= dt.getBoundingClientRect().bottom - 1,
+			fullWidth: Math.abs(ddBox.width - listBox.width) < 2,
+			itemsIntact:
+				parts.length > 0 &&
+				parts.every(
+					(p) => p.scrollWidth <= p.clientWidth + 1 && p.scrollHeight <= p.clientHeight + 1
+				),
+			noHOverflow: dd.scrollWidth <= dd.clientWidth + 1
+		};
+	});
 	const cspBefore = cspViolations.length;
 	await page.getByRole('button', { name: 'Close' }).tap();
 	const closed = await sheetWaitClosed(page);
@@ -851,6 +874,12 @@ async function checkPreview(page, width, label) {
 		report(`${label} open: focus is on the title, not Close @ ${width}px`, titleFocused) && pass;
 	pass =
 		report(
+			`${label} open: mix on its own full-width line, wrapping between items @ ${width}px`,
+			mix !== null && mix.ownLine && mix.fullWidth && mix.itemsIntact && mix.noHOverflow,
+			mix === null ? 'no mix row' : JSON.stringify(mix)
+		) && pass;
+	pass =
+		report(
 			`${label}: closes on Close, focus back on the opener @ ${width}px`,
 			closed && focusBack,
 			`closed=${closed}, focusBack=${focusBack}`
@@ -861,8 +890,9 @@ async function checkPreview(page, width, label) {
 
 /**
  * The preview sheet in one color scheme, phone-like (touch + mobile, like
- * the close-behavior checks): one context, the viewport resized between the
- * phone and desktop widths; the demo scan runs once per context.
+ * the close-behavior checks): one context, the viewport resized across the
+ * two phone widths and the desktop width; the demo scan runs once per
+ * context.
  */
 async function runPreview(browser, colorScheme) {
 	const context = await browser.newContext({
@@ -874,7 +904,7 @@ async function runPreview(browser, colorScheme) {
 	const page = await context.newPage();
 	watchConsole(page);
 	let ok = true;
-	for (const width of [360, 1280]) {
+	for (const width of [360, 390, 1280]) {
 		await page.setViewportSize({ width, height: HEIGHT });
 		if (!(await checkPreview(page, width, `preview sheet (${colorScheme})`))) ok = false;
 	}
@@ -1144,8 +1174,8 @@ async function main() {
 					} else if (!(await runSheetRowsWidth(browser, width))) ok = false;
 				}
 				if (!(await runMobile(browser))) ok = false;
-				// The profile preview sheet, in light and dark, at a phone
-				// and a desktop width (one demo scan per context).
+				// The profile preview sheet, in light and dark, at the phone
+				// widths and a desktop width (one demo scan per context).
 				for (const scheme of ['light', 'dark']) {
 					if (!(await runPreview(browser, scheme))) ok = false;
 				}

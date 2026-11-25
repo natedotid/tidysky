@@ -114,9 +114,21 @@
 						<dd>{preview.activity.perDay}</dd>
 					</div>
 					{#if preview.activity.mix !== null}
-						<div class="fact">
+						<!-- The mix can hold several items, so it takes a line of
+							its own under the label and wraps only between items,
+							never mid-item, at a narrow width. -->
+						<div class="fact mix">
 							<dt>Mix</dt>
-							<dd>{preview.activity.mix}</dd>
+							<dd>
+								{#each preview.activity.mix as part, i (part)}
+									<span class="mix-part">
+										{part}
+										{#if i < preview.activity.mix.length - 1}
+											<span class="mix-sep" aria-hidden="true">·</span>
+										{/if}
+									</span>
+								{/each}
+							</dd>
 						</div>
 					{/if}
 					{#if preview.activity.languages !== null}
@@ -250,6 +262,25 @@
 		text-align: right;
 		font-variant-numeric: tabular-nums;
 		overflow-wrap: anywhere;
+	}
+	/* The Mix is the one fact with several values: the label sits on top,
+	   the items take the full width below and wrap only between items. */
+	.fact.mix {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 2px;
+	}
+	.fact.mix dd {
+		display: flex;
+		flex-wrap: wrap;
+		text-align: left;
+	}
+	.mix-part {
+		white-space: nowrap;
+	}
+	.mix-sep {
+		margin: 0 var(--space-xs);
+		color: var(--color-text-muted);
 	}
 
 	.plain {

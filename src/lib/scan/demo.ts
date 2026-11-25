@@ -22,6 +22,7 @@ import type {
 	ProfileLite
 } from './source';
 import type { FollowAccount, ProfileViewer, Snapshot } from './types';
+import { blockApplies } from './viewer';
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
@@ -456,8 +457,7 @@ export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): De
 		meta.push({ did, rate });
 
 		// The signed-in read's view of the follow: most are plain, a few are
-		// hidden by a moderation list or block you. While a block applies,
-		// follow-back is unknown, like in the live read.
+		// hidden by a moderation list or block you.
 		const viewer: ProfileViewer = {
 			mutedByList: null,
 			blockingByList: null,
@@ -473,9 +473,11 @@ export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): De
 			listBlockedLeft -= 1;
 		} else if (blocksYouLeft > 0) {
 			viewer.blockedBy = true;
-			followsYou = null;
 			blocksYouLeft -= 1;
 		}
+		// The same rule as the live read: while any block applies (personal
+		// or by list), the follow-back reading is unknown.
+		if (blockApplies(viewer)) followsYou = null;
 		// About 10% of the follows are followed by no one you follow.
 		if (viewerRand() < 0.1) viewer.knownFollowers = 0;
 

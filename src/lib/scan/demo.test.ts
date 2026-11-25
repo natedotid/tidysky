@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { matches } from '#lib/filters/filters';
+import { CLEANUP_PRESETS } from '#lib/filters/presets';
 import { feedShare } from '#lib/insights/following';
 import { diffSnapshots, makeSnapshot } from '#lib/insights/snapshots';
 import type { FollowAccount } from '#lib/scan/types';
@@ -7,6 +9,7 @@ import type { FollowAccount } from '#lib/scan/types';
 import { DemoSource, demoPreviousSnapshot, generateDemoData, type DemoData } from './demo';
 import { summarizeActivity } from './estimate';
 import { collectInteractions } from './interactions';
+import { blockApplies } from './viewer';
 
 const NOW = Date.parse('2026-11-02T12:00:00Z');
 const DAY_MS = 86_400_000;
@@ -180,9 +183,26 @@ describe('generateDemoData', () => {
 		expect(zero / followed.length).toBeGreaterThan(0.05);
 		expect(zero / followed.length).toBeLessThan(0.2);
 
-		// A blockedBy follow has no follow-back reading, like the live path.
+		// While any block applies (personal or by list) the follow-back
+		// reading is unknown, the same rule as the live path.
 		for (const p of followed) {
-			if (p.viewer?.blockedBy === true) expect(p.followsYou).toBeNull();
+			if (blockApplies(p.viewer)) expect(p.followsYou, p.did).toBeNull();
+		}
+	});
+
+	it('a list-blocked account reads "unknown" for follow-back and stays out of the not-following-back preset', () => {
+		const notBack = CLEANUP_PRESETS.find((p) => p.id === 'notBack');
+		if (notBack === undefined) throw new Error('the notBack preset is missing');
+		const now = new Date(NOW);
+		const listBlocked = accountsWithActivity().filter(
+			(a) => a.viewer?.blockingByList?.name === 'Reply guys'
+		);
+		expect(listBlocked.length).toBeGreaterThanOrEqual(1);
+		for (const a of listBlocked) {
+			// Null follow-back is what the preview's "Follows you" fact renders as "Unknown".
+			expect(a.followsYou, a.did).toBeNull();
+			// Unknown matches neither polarity, so the account is not suggested as not following back.
+			expect(matches(a, notBack.spec, now), a.did).toBe(false);
 		}
 	});
 

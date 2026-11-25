@@ -97,8 +97,9 @@ describe('buildPreview', () => {
 			kind: 'data',
 			lastActive: '2d ago',
 			perDay: '3/day',
-			// 0% quotes are left out.
-			mix: '45% posts · 20% replies · 35% reposts',
+			// 0% quotes are left out. Parts stay separate so the sheet can wrap
+			// only between items.
+			mix: ['45% posts', '20% replies', '35% reposts'],
 			languages: 'en, es',
 			sampleSize: 30
 		});

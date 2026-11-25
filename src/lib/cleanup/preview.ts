@@ -30,8 +30,12 @@ export type PreviewActivity =
 			lastActive: string;
 			/** The estimated rate, e.g. "3/day". */
 			perDay: string;
-			/** "45% posts · 20% replies": whole percentages of the sample, 0% left out. */
-			mix: string | null;
+			/**
+			 * The mix items, e.g. ["45% posts", "20% replies"]: whole percentages
+			 * of the sample, 0% left out. Kept as parts so the sheet can break
+			 * the line only between items, never mid-item.
+			 */
+			mix: string[] | null;
 			/** "en, es", or null when no language was detected. */
 			languages: string | null;
 			/** The sample size, for the "estimated from N" footnote. */
@@ -157,7 +161,7 @@ export function buildPreview(a: FollowAccount, win: InteractionWindow): Preview 
 			kind: 'data',
 			lastActive: act.lastActiveAt === null ? '—' : relativeDays(act.lastActiveAt),
 			perDay: rate(act.itemsPerDay),
-			mix: mixParts.length > 0 ? mixParts.join(' · ') : null,
+			mix: mixParts.length > 0 ? mixParts : null,
 			languages: act.topLangs.length > 0 ? act.topLangs.map(([code]) => code).join(', ') : null,
 			sampleSize: act.sampleSize
 		};
