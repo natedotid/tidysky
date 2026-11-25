@@ -216,10 +216,10 @@
 								{:else}
 									<span class="txt fallback">{topPostLine(p.alt, p.embed)}</span>
 								{/if}
-								<span class="meta num"
-									>{plural(p.likes, 'like', 'likes')} · {plural(p.reposts, 'repost', 'reposts')} ·
-									{plural(p.replies, 'reply', 'replies')}</span
-								>
+								<span class="meta num">
+									{plural(p.likes, 'like', 'likes')} · {plural(p.reposts, 'repost', 'reposts')} ·
+									{plural(p.replies, 'reply', 'replies')}
+								</span>
 							</a>
 						</li>
 					{/each}

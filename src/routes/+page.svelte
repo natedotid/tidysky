@@ -67,9 +67,9 @@
 		stays on this device.
 	</p>
 
-	<a class="btn btn-secondary demo-try" href={resolve('/insights?demo=1')}
-		>Try it with sample data</a
-	>
+	<a class="btn btn-secondary demo-try" href={resolve('/insights?demo=1')}>
+		Try it with sample data
+	</a>
 
 	<div class="features">
 		<div class="feature">
@@ -148,12 +148,14 @@
 		<a
 			href="https://github.com/natedotid/tidysky"
 			target="_blank"
-			rel="external noopener noreferrer">Source code</a
+			rel="external noopener noreferrer"
 		>
+			Source code
+		</a>
 		<span class="sep" aria-hidden="true">·</span>
-		<a href="https://bsky.app/profile/nate.id" target="_blank" rel="external noopener noreferrer"
-			>Built by Nate</a
-		>
+		<a href="https://bsky.app/profile/nate.id" target="_blank" rel="external noopener noreferrer">
+			Built by Nate
+		</a>
 	</footer>
 </div>
 

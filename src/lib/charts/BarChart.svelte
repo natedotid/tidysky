@@ -57,13 +57,13 @@
 			{#each rows as r (r.label)}
 				<li class="row">
 					<span class="label" title={r.label}>{r.label}</span>
-					<span class="track"
-						><span
+					<span class="track">
+						<span
 							class="fill"
 							class:hl={r.highlight === true}
 							style={`width: ${max === 0 ? 0 : (r.value / max) * 100}%`}
-						></span></span
-					>
+						></span>
+					</span>
 					<span class="value">{r.valueLabel ?? r.value}</span>
 				</li>
 			{/each}

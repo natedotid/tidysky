@@ -82,9 +82,9 @@
 								{c.text}
 							</button>
 						{:else}
-							<a class="chip" href={resolve(`cleanup?since=${c.key}`)} aria-label={c.ariaLabel}
-								>{c.text}</a
-							>
+							<a class="chip" href={resolve(`cleanup?since=${c.key}`)} aria-label={c.ariaLabel}>
+								{c.text}
+							</a>
 						{/if}
 					</li>
 				{/each}

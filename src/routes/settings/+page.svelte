@@ -210,13 +210,13 @@
 			<p class="note">Bluesky asks you to sign in again every two weeks.</p>
 			<p class="note">
 				To remove TidySky's access completely, revoke it on
-				<a href="https://bsky.social/account" target="_blank" rel="external noopener noreferrer"
-					>your Bluesky account page</a
-				>. It can take up to an hour to stop working, so sign out here too.
+				<a href="https://bsky.social/account" target="_blank" rel="external noopener noreferrer">
+					your Bluesky account page
+				</a>. It can take up to an hour to stop working, so sign out here too.
 			</p>
-			<button type="button" class="btn btn-danger" onclick={() => void session.signOut()}
-				>Sign out</button
-			>
+			<button type="button" class="btn btn-danger" onclick={() => void session.signOut()}>
+				Sign out
+			</button>
 		{/if}
 	</section>
 
@@ -334,16 +334,20 @@
 			<a
 				href="https://github.com/natedotid/tidysky"
 				target="_blank"
-				rel="external noopener noreferrer">Source code</a
+				rel="external noopener noreferrer"
 			>
+				Source code
+			</a>
 		</p>
 		<p>
 			Ideas or bugs?
 			<a
 				href="https://bsky.app/intent/compose?text=%40tidysky.io%20"
 				target="_blank"
-				rel="external noopener noreferrer">Post to @tidysky.io</a
+				rel="external noopener noreferrer"
 			>
+				Post to @tidysky.io
+			</a>
 		</p>
 	</section>
 </div>

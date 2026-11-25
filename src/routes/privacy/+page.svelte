@@ -77,8 +77,10 @@
 			<a
 				href="https://bsky.social/about/support/privacy-policy"
 				target="_blank"
-				rel="external noopener noreferrer">Bluesky's privacy policy</a
-			>.
+				rel="external noopener noreferrer"
+			>
+				Bluesky's privacy policy
+			</a>.
 		</p>
 		<p>
 			To show your last interaction with each account, TidySky also reads your own likes, reposts
@@ -90,8 +92,10 @@
 			<a
 				href="https://github.com/natedotid/tidysky"
 				target="_blank"
-				rel="external noopener noreferrer">github.com/natedotid/tidysky</a
-			>.
+				rel="external noopener noreferrer"
+			>
+				github.com/natedotid/tidysky
+			</a>.
 		</p>
 	</section>
 
@@ -99,9 +103,9 @@
 		<h2>Analytics</h2>
 		<p>
 			TidySky uses
-			<a href="https://usefathom.com" target="_blank" rel="external noopener noreferrer"
-				>Fathom Analytics</a
-			>
+			<a href="https://usefathom.com" target="_blank" rel="external noopener noreferrer">
+				Fathom Analytics
+			</a>
 			to count page visits and a few anonymous actions, like "a scan finished" or "a list was created".
 			Fathom doesn't use cookies and doesn't collect personal data. TidySky never sends it your handle,
 			your follows, or anything from your Bluesky account. If your browser sends Do Not Track, nothing
@@ -177,11 +181,11 @@
 		<p>
 			To stop TidySky from acting on your account at all, revoke its access on your Bluesky server's
 			account page. For accounts hosted by Bluesky, that's
-			<a href="https://bsky.social/account" target="_blank" rel="external noopener noreferrer"
-				>bsky.social/account</a
-			>, where TidySky is listed under your approved apps with a Revoke access button. It can take
-			up to an hour for TidySky to stop working after you revoke it. To stop it right away on this
-			device, also sign out.
+			<a href="https://bsky.social/account" target="_blank" rel="external noopener noreferrer">
+				bsky.social/account
+			</a>, where TidySky is listed under your approved apps with a Revoke access button. It can
+			take up to an hour for TidySky to stop working after you revoke it. To stop it right away on
+			this device, also sign out.
 		</p>
 	</section>
 

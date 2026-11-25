@@ -328,8 +328,9 @@
 				<p class="summary">
 					{#if diff.add.length > 0}<span class="add">+{diff.add.length} to add</span>{/if}
 					{#if diff.add.length > 0 && diff.remove.length > 0}<span> · </span>{/if}
-					{#if diff.remove.length > 0}<span class="remove">−{diff.remove.length} to remove</span
-						>{/if}
+					{#if diff.remove.length > 0}<span class="remove">
+							−{diff.remove.length} to remove
+						</span>{/if}
 				</p>
 				{#if diff.add.length > 0}
 					<h3>Add</h3>
