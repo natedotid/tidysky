@@ -22,6 +22,7 @@
 	import FilterChips from '#lib/ui/FilterChips.svelte';
 	import FollowRow from '#lib/ui/FollowRow.svelte';
 	import PresetSheet from '#lib/ui/PresetSheet.svelte';
+	import PreviewSheet from '#lib/ui/PreviewSheet.svelte';
 	import RecentChanges from '#lib/ui/RecentChanges.svelte';
 	import ReviewSheet from '#lib/ui/ReviewSheet.svelte';
 	import SelectionBar from '#lib/ui/SelectionBar.svelte';
@@ -30,6 +31,15 @@
 	let sheetOpen = $state(false);
 	let reviewOpen = $state(false);
 	let presetSheetOpen = $state(false);
+	/**
+	 * The row the preview sheet opened with: the sheet keeps showing this
+	 * stored row until it is closed, so a filter change or a finished scan
+	 * that moves the row out of the list does not blank the sheet. It is
+	 * dropped again on close, so the closed sheet holds no account and the
+	 * "Select"/"Keep" state it would show is computed from nothing.
+	 */
+	let previewAccount = $state<FollowAccount | null>(null);
+	let previewOpen = $state(false);
 	/** The chip the edit sheet is open on, or null when it is closed. */
 	let editIndex = $state<number | null>(null);
 	let editOpen = $state(false);
@@ -108,6 +118,14 @@
 		}
 		cleanupState.applyUrlParams(page.url.searchParams);
 	});
+
+	/** Open the preview sheet on the row's stored data (no new requests). */
+	function openPreview(did: string): void {
+		const a = scanState.accounts.find((x) => x.did === did);
+		if (a === undefined) return;
+		previewAccount = a;
+		previewOpen = true;
+	}
 
 	const scannedText = $derived.by((): string => {
 		if (scanState.running) return 'scan in progress';
@@ -342,6 +360,7 @@
 							interactionsScannedAt={scanState.interactionsScannedAt}
 							interactionsCoveredSince={scanState.interactionsCoveredSince}
 							{myCreatedAt}
+							onPreview={openPreview}
 						/>
 					{/snippet}
 				</VirtualList>
@@ -407,6 +426,22 @@
 	open={reviewOpen}
 	onClose={() => (reviewOpen = false)}
 	onFinished={() => (logRefresh += 1)}
+/>
+
+<PreviewSheet
+	open={previewOpen}
+	account={previewAccount}
+	checked={previewAccount !== null && cleanupState.selected.has(previewAccount.did)}
+	kept={previewAccount !== null && cleanupState.isKept(previewAccount.did)}
+	onToggle={(did) => cleanupState.toggle(did)}
+	onKeepToggle={(did) => cleanupState.toggleKeep(did)}
+	interactionsScannedAt={scanState.interactionsScannedAt}
+	interactionsCoveredSince={scanState.interactionsCoveredSince}
+	{myCreatedAt}
+	onClose={() => {
+		previewOpen = false;
+		previewAccount = null;
+	}}
 />
 
 {#if undoNote !== null}

@@ -18,6 +18,12 @@
 		interactionsCoveredSince: string | null;
 		/** Your own account's createdAt, if known. */
 		myCreatedAt: string | null;
+		/**
+		 * When set (Clean up), the name and avatar open a preview sheet
+		 * instead of linking to Bluesky. When absent (the Lists list
+		 * builder), the row links out as before.
+		 */
+		onPreview?: (did: string) => void;
 	}
 
 	let {
@@ -28,10 +34,14 @@
 		onKeepToggle,
 		interactionsScannedAt,
 		interactionsCoveredSince,
-		myCreatedAt
+		myCreatedAt,
+		onPreview
 	}: Props = $props();
 
-	const name = $derived(account.displayName ?? account.handle ?? account.did);
+	// `||`, not `??`: a dead account stores an empty handle, and an empty
+	// name would leave the row and its aria-labels blank.
+	const name = $derived(account.displayName || account.handle || account.did);
+	const previewable = $derived(onPreview !== undefined);
 	const dead = $derived(
 		account.status === 'deactivated' || account.status === 'takendown' || account.status === 'gone'
 	);
@@ -71,7 +81,7 @@
 	const href = $derived(`https://bsky.app/profile/${account.handle || account.did}`);
 </script>
 
-<div class="row" style={`--row-h: ${ROW_HEIGHT}px`}>
+<div class="row" class:preview={previewable} style={`--row-h: ${ROW_HEIGHT}px`}>
 	<label class="check">
 		<input
 			type="checkbox"
@@ -81,18 +91,40 @@
 		/>
 	</label>
 
-	<Avatar src={account.avatar} {name} size={36} />
+	{#if previewable}
+		<!-- The avatar and the whole text block become one button: the
+			same layout as the link version, but tapping anywhere in it
+			opens the preview instead of Bluesky. -->
+		<button
+			type="button"
+			class="open"
+			aria-label={`Preview ${name}`}
+			onclick={() => onPreview?.(account.did)}
+		>
+			<Avatar src={account.avatar} {name} size={36} />
+			<span class="text">
+				<span class="line">
+					<span class="name">{name}</span>
+					{#if account.handle !== ''}<span class="handle">@{account.handle}</span>{/if}
+				</span>
+				<span class="meta" class:dead>{meta}</span>
+				{#if you !== null}<span class="you">{you}</span>{/if}
+			</span>
+		</button>
+	{:else}
+		<Avatar src={account.avatar} {name} size={36} />
 
-	<div class="text">
-		<div class="line">
-			<a class="name" {href} target="_blank" rel="external noopener noreferrer">{name}</a>
-			{#if account.handle !== ''}<span class="handle">@{account.handle}</span>{/if}
+		<div class="text">
+			<div class="line">
+				<a class="name" {href} target="_blank" rel="external noopener noreferrer">{name}</a>
+				{#if account.handle !== ''}<span class="handle">@{account.handle}</span>{/if}
+			</div>
+			<p class="meta" class:dead>{meta}</p>
+			{#if you !== null}
+				<p class="you">{you}</p>
+			{/if}
 		</div>
-		<p class="meta" class:dead>{meta}</p>
-		{#if you !== null}
-			<p class="you">{you}</p>
-		{/if}
-	</div>
+	{/if}
 
 	<button
 		type="button"
@@ -128,6 +160,39 @@
 			every px goes to the text column. */
 		height: var(--row-h);
 		border-bottom: 1px solid var(--color-border);
+	}
+	/* Preview mode: the button takes over the avatar and text columns, so
+		the row drops from four columns to three. */
+	.row.preview {
+		grid-template-columns: auto 1fr auto;
+	}
+	/* The tappable preview area: the avatar and the text block keep their
+		exact spacing (the row's gap and centered alignment are unchanged),
+		so the row looks the same as the link version. */
+	.open {
+		display: flex;
+		align-items: center;
+		gap: var(--space-xs);
+		min-width: 0;
+		margin: 0;
+		padding: 0;
+		border: none;
+		background: none;
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+	.open .text {
+		flex: 1;
+	}
+	/* The stats and "You:" lines are spans inside the button, so block them. */
+	.open .meta,
+	.open .you {
+		display: block;
+	}
+	/* The name underlines when the whole button is hovered, like the link. */
+	.open:hover .name {
+		text-decoration: underline;
 	}
 
 	/* 44px hit area around the checkbox. */

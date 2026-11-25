@@ -16,8 +16,8 @@ TidySky server, and nothing you do is sent anywhere except to Bluesky.
   what you post, how your posts land, who follows you).
 - **Clean up**: bulk-unfollow the accounts that match your filters: start
   from a preset (gone, quiet, one-way, …) or build your own filter chips,
-  each editable in place. Every action can be undone, and you can mute or
-  move to a list instead of unfollowing.
+  each editable in place. Tapping a name previews the account. Every action
+  can be undone, and you can mute or move to a list instead of unfollowing.
 - **Lists as feeds**: turn the result of any filter into a Bluesky list,
   and pin a list as a feed in the Bluesky app.
 - **Interactions**: for each account, when you last liked, reposted,
