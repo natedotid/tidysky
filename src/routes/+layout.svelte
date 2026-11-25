@@ -154,7 +154,10 @@
 			<button type="button" class="demo-exit" onclick={exitDemo}>Exit demo</button>
 		</div>
 	{/if}
-	{#if authed}
+	<!-- The tab bar stays on app routes even while an error renders there,
+	     but a 404 lands on a public URL: the error page follows the layout's
+	     public/app split and renders without the tab bar. -->
+	{#if authed && (page.status === 200 || isAppRoute(page.url.pathname))}
 		<TabBar />
 	{/if}
 	<main>

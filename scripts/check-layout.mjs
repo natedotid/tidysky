@@ -98,7 +98,10 @@ const PAGES = [
 	{ url: '/lists?demo=1', demo: true },
 	{ url: '/settings?demo=1', demo: true, done: /Last scanned/ },
 	{ url: '/methodology' },
-	{ url: '/privacy' }
+	{ url: '/privacy' },
+	// The not-found page: an unknown URL, rendered client-side by the SPA
+	// fallback. Checked in both browsers (see runSheetRowsWidth too).
+	{ url: '/this-page-does-not-exist' }
 ];
 
 // The pages the two layout-checked sheets live on.
@@ -999,6 +1002,10 @@ async function runSheetRowsWidth(browser, width) {
 	// name ellipsis). The demo scan already ran on the cleanup pages above.
 	await settle(page, INSIGHTS);
 	if (!(await checkInteractionCard(page, width, INSIGHTS.url))) ok = false;
+	// The not-found page in WebKit too: it is in PAGES (Chromium) and the
+	// spec asks for both browsers, but PAGES is only walked in the full run.
+	const notFound = PAGES.find((e) => e.url === '/this-page-does-not-exist');
+	if (!(await checkTab(page, notFound.url, notFound))) ok = false;
 	if (!(await checkSheetsOpen(page, width))) ok = false;
 	if (!(await checkEditSheet(page, width))) ok = false;
 	await context.close();
