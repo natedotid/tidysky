@@ -81,7 +81,13 @@
 	const href = $derived(`https://bsky.app/profile/${account.handle || account.did}`);
 </script>
 
-<div class="row" class:preview={previewable} style={`--row-h: ${ROW_HEIGHT}px`}>
+<!-- data-did lets the page's keyboard shortcuts find which row has focus. -->
+<div
+	class="row"
+	class:preview={previewable}
+	data-did={account.did}
+	style={`--row-h: ${ROW_HEIGHT}px`}
+>
 	<label class="check">
 		<input
 			type="checkbox"

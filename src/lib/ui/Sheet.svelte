@@ -40,6 +40,16 @@
 	 * found.
 	 */
 	let lastFocused: HTMLElement | null = null;
+	/**
+	 * Whether the dialog is open because this sheet called showModal on it.
+	 * A native close (Escape, backdrop) removes the open attribute before
+	 * the close event lands, so for a moment the dialog is closed while the
+	 * open prop still says open. If this effect re-runs in that window it
+	 * must not showModal again, or the sheet reopens on top of whatever the
+	 * user just opened next (the pending close event then closes it again,
+	 * and the new sheet is left stranded). The close event resets the flag.
+	 */
+	let shown = $state(false);
 
 	function rememberFocus(e: FocusEvent): void {
 		if (!open && e.target instanceof HTMLElement) lastFocused = e.target;
@@ -52,12 +62,20 @@
 
 	$effect(() => {
 		if (open && dialog !== null && !dialog.open) {
+			if (shown) {
+				// A native close is in flight (its close event has not
+				// landed): the open prop is stale. Do not reopen; the close
+				// event will land and sync the prop.
+				shown = false;
+				return;
+			}
 			const ae = document.activeElement;
 			opener =
 				ae instanceof HTMLElement && ae !== document.body && ae !== document.documentElement
 					? ae
 					: lastFocused;
 			dialog.showModal();
+			shown = true;
 			// showModal focuses the first focusable element (Close); move it
 			// to the title instead.
 			titleEl?.focus();
@@ -75,6 +93,7 @@
 	}
 
 	function onSheetClosed(): void {
+		shown = false;
 		opener?.focus();
 		onClose();
 	}

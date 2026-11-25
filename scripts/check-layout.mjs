@@ -64,8 +64,16 @@
 //   opener), on a tap on the backdrop above the sheet, and stays open on a
 //   tap inside the sheet away from any button.
 //
-// The sheet and row checks run in both Chromium and WebKit (the WebKit run
-// is the one that models Safari); WebKit also gets the close-behavior suite.
+// It also drives Clean up's keyboard shortcuts on a fine-pointer (desktop)
+// context at 1280 px: j focuses the first row's preview button, x selects it
+// and the selection bar appears, Enter opens the preview and Escape closes
+// it with focus back on that row, and ? opens the shortcuts sheet; on a
+// touch (coarse-pointer) context the "Keyboard shortcuts" button next to the
+// Sort control is hidden at 390 px.
+//
+// The sheet, row and keyboard checks run in both Chromium and WebKit (the
+// WebKit run is the one that models Safari); WebKit also gets the
+// close-behavior suite.
 // Chromium-only launch flags fix its background-timer throttling and are not
 // passed to WebKit.
 //
@@ -591,16 +599,21 @@ async function checkRowNamePriority(page, width, label) {
 }
 
 async function sheetWaitOpen(page) {
-	await page.waitForFunction(
-		(sel) => {
-			const d = document.querySelector(sel);
-			return d !== null && d.open;
-		},
-		DIALOG,
-		{ timeout: 10_000 }
-	);
+	try {
+		await page.waitForFunction(
+			(sel) => {
+				const d = document.querySelector(sel);
+				return d !== null && d.open;
+			},
+			DIALOG,
+			{ timeout: 10_000 }
+		);
+	} catch {
+		return false;
+	}
 	// Let the 180 ms entrance animation settle before measuring.
 	await page.waitForTimeout(250);
+	return true;
 }
 
 async function sheetWaitClosed(page) {
@@ -912,6 +925,105 @@ async function runPreview(browser, colorScheme) {
 	return ok;
 }
 
+/**
+ * Keyboard shortcuts in Clean up, on a fine-pointer (desktop) context at
+ * 1280 px: j focuses the first row's preview button, x selects it and the
+ * selection bar appears, Enter opens the preview and Escape closes it with
+ * focus back on that row, and ? opens the shortcuts sheet. Then, on a touch
+ * (coarse-pointer) context, the "Keyboard shortcuts" button is hidden at
+ * 390 px (the media query is about pointer type, not width).
+ */
+async function runKeyboard(browser) {
+	const context = await browser.newContext({ viewport: { width: 1280, height: HEIGHT } });
+	const page = await context.newPage();
+	watchConsole(page);
+	let ok = true;
+	const at = ' @ 1280px';
+	const firstSel = '[data-did] .open';
+
+	await settle(page, PREVIEW);
+
+	// The button next to the Sort control: shown on a fine-pointer device.
+	ok =
+		report(
+			`keyboard: "Keyboard shortcuts" button visible${at} (fine pointer)`,
+			(await page.getByRole('button', { name: 'Keyboard shortcuts' }).count()) > 0
+		) && ok;
+
+	// j focuses the first row's preview button.
+	await page.keyboard.press('j');
+	const jFocused = await page.evaluate((sel) => {
+		const ae = document.activeElement;
+		return ae instanceof HTMLElement && ae === document.querySelector(sel);
+	}, firstSel);
+	ok = report(`keyboard: j focuses the first row's preview button${at}`, jFocused) && ok;
+
+	// x selects the row and the selection bar appears.
+	await page.keyboard.press('x');
+	const xState = await page.evaluate(() => {
+		const first = document.querySelector('[data-did]');
+		const checked = first?.querySelector('input[type="checkbox"]')?.checked ?? false;
+		const bar = document.querySelector('[aria-label="Selection actions"]');
+		return { checked, bar: bar !== null };
+	});
+	ok =
+		report(
+			`keyboard: x selects the row and the selection bar appears${at}`,
+			xState.checked && xState.bar,
+			JSON.stringify(xState)
+		) && ok;
+
+	// Enter opens the preview (the button's native activation).
+	await page.keyboard.press('Enter');
+	ok = report(`keyboard: Enter opens the preview${at}`, await sheetWaitOpen(page)) && ok;
+	// Escape closes it with focus back on that row.
+	await page.keyboard.press('Escape');
+	const escClosed = await sheetWaitClosed(page);
+	const focusBack = await page.evaluate((sel) => {
+		const ae = document.activeElement;
+		return ae instanceof HTMLElement && ae === document.querySelector(sel);
+	}, firstSel);
+	ok =
+		report(
+			`keyboard: Escape closes the preview, focus back on the row${at}`,
+			escClosed && focusBack,
+			`closed=${escClosed}, focusBack=${focusBack}`
+		) && ok;
+
+	// ? opens the shortcuts sheet (Shift+/ produces key "?").
+	await page.keyboard.press('Shift+/');
+	const qOpened = await sheetWaitOpen(page);
+	const qTitle = await page.evaluate(
+		() => document.querySelector('dialog.sheet[open] h2')?.textContent ?? ''
+	);
+	ok =
+		report(
+			`keyboard: ? opens the shortcuts sheet${at}`,
+			qOpened && qTitle === 'Keyboard shortcuts',
+			`title="${qTitle}"`
+		) && ok;
+	await page.keyboard.press('Escape');
+	await sheetWaitClosed(page);
+	await context.close();
+
+	// Touch (coarse pointer): the button is hidden at 390 px.
+	const touch = await browser.newContext({
+		viewport: { width: 390, height: HEIGHT },
+		hasTouch: true,
+		isMobile: true
+	});
+	const tpage = await touch.newPage();
+	watchConsole(tpage);
+	await settle(tpage, PREVIEW);
+	const btn = tpage.getByRole('button', { name: 'Keyboard shortcuts' });
+	const btnHidden =
+		(await btn.count()) === 0 || ((await btn.count()) > 0 && !(await btn.first().isVisible()));
+	ok = report('keyboard: "Keyboard shortcuts" button hidden @ 390px (touch)', btnHidden) && ok;
+	await touch.close();
+
+	return ok;
+}
+
 /** The two bottom sheets, open, at this width. */
 async function checkSheetsOpen(page, width) {
 	let pass = true;
@@ -1179,6 +1291,9 @@ async function main() {
 				for (const scheme of ['light', 'dark']) {
 					if (!(await runPreview(browser, scheme))) ok = false;
 				}
+				// Keyboard shortcuts in Clean up, desktop-like at 1280 px,
+				// and the shortcuts button hidden on touch at 390 px.
+				if (!(await runKeyboard(browser))) ok = false;
 			} finally {
 				await browser.close();
 			}

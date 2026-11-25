@@ -7,6 +7,7 @@
 	import { currentWriter } from '#lib/actions/writer';
 	import { session } from '#lib/atproto/session.svelte';
 	import { cleanupState, type Sort } from '#lib/cleanup/cleanup-state.svelte';
+	import { keyAction } from '#lib/cleanup/keys';
 	import { openStore } from '#lib/db/store';
 	import { plural } from '#lib/format';
 	import { isAuthFailure } from '#lib/net/errors';
@@ -26,6 +27,7 @@
 	import RecentChanges from '#lib/ui/RecentChanges.svelte';
 	import ReviewSheet from '#lib/ui/ReviewSheet.svelte';
 	import SelectionBar from '#lib/ui/SelectionBar.svelte';
+	import ShortcutsSheet from '#lib/ui/ShortcutsSheet.svelte';
 	import VirtualList from '#lib/ui/VirtualList.svelte';
 
 	let sheetOpen = $state(false);
@@ -125,6 +127,125 @@
 		if (a === undefined) return;
 		previewAccount = a;
 		previewOpen = true;
+	}
+
+	/** The shortcuts sheet, opened by "?" or the button next to the Sort. */
+	let shortcutsOpen = $state(false);
+	/** The rows wrapper: its top is the virtual list's top, for scrolling. */
+	let rowsEl = $state<HTMLElement | null>(null);
+
+	/**
+	 * The row keyboard shortcuts: j/k/arrows move the focus, x/Space select,
+	 * p keeps, Enter and o open the preview, Escape leaves the rows, ? shows
+	 * the shortcuts sheet. The key-to-action decision is pure and tested in
+	 * #lib/cleanup/keys; this only reads the focus state and wires the
+	 * result. The "current row" is derived from the focus on each press -
+	 * the row whose preview button is focused - so there is no row state to
+	 * keep in sync.
+	 */
+	function onKeyDown(e: KeyboardEvent): void {
+		const ae = document.activeElement;
+		// A dialog is open: it owns the keyboard (Escape closes it natively).
+		// Read the DOM, not the Svelte state: the close event that updates
+		// the state can land a task after the dialog's `open` attribute is
+		// already gone, and a key pressed in that gap must not see a sheet
+		// that no longer exists.
+		const anyDialogOpen = document.querySelector('dialog[open]') !== null;
+		let inEditable = false;
+		let onRow = false;
+		let did: string | null = null;
+		let rowBtn: HTMLElement | null = null;
+		if (ae instanceof HTMLElement) {
+			inEditable =
+				ae.tagName === 'INPUT' ||
+				ae.tagName === 'TEXTAREA' ||
+				ae.tagName === 'SELECT' ||
+				ae.isContentEditable;
+			const row = ae.closest('[data-did]');
+			// The preview button is the row's focusable name: "open" plus a
+			// row ancestor keeps it distinct from any other button.
+			onRow = ae.classList.contains('open') && row !== null;
+			did = onRow ? (row?.getAttribute('data-did') ?? null) : null;
+			rowBtn = onRow ? ae : null;
+		}
+		const action = keyAction({
+			key: e.key,
+			shiftKey: e.shiftKey,
+			ctrlKey: e.ctrlKey,
+			altKey: e.altKey,
+			metaKey: e.metaKey,
+			inEditable,
+			// Escape while a sheet is open closes it natively and returns
+			// focus to the opener, so the shortcuts stay out of the way.
+			sheetOpen: anyDialogOpen,
+			onRow,
+			currentIndex: onRow && did !== null ? results.findIndex((a) => a.did === did) : null,
+			count: results.length
+		});
+		if (action.kind === 'ignore') return;
+		e.preventDefault();
+		switch (action.kind) {
+			case 'focusRow':
+				focusRow(action.index);
+				break;
+			case 'toggleSelect':
+				if (did !== null) cleanupState.toggle(did);
+				break;
+			case 'toggleKeep':
+				if (did !== null) cleanupState.toggleKeep(did);
+				break;
+			case 'openPreview':
+				if (did !== null) openPreview(did);
+				break;
+			case 'leaveRow':
+				rowBtn?.blur();
+				break;
+			case 'showShortcuts':
+				shortcutsOpen = true;
+				break;
+		}
+	}
+
+	$effect(() => {
+		window.addEventListener('keydown', onKeyDown);
+		return () => window.removeEventListener('keydown', onKeyDown);
+	});
+
+	/**
+	 * Make row `index` the current row: focus its preview button (the name +
+	 * avatar), so screen readers announce it and Enter opens the preview
+	 * natively. The list is virtualized, so a row outside the rendered
+	 * window is not in the DOM yet: scroll it into view first, then focus
+	 * it once the list has rendered it.
+	 */
+	function focusRow(index: number): void {
+		const item = results[index];
+		if (item === undefined) return;
+		const findButton = (): HTMLButtonElement | null =>
+			document.querySelector<HTMLButtonElement>(`[data-did="${item.did}"] .open`);
+		const btn = findButton();
+		if (btn !== null) {
+			btn.focus();
+			return;
+		}
+		if (rowsEl !== null) {
+			const listTop = rowsEl.getBoundingClientRect().top + window.scrollY;
+			// A few px of headroom so the focused row is not flush at the
+			// top edge.
+			window.scrollTo({ top: listTop + index * ROW_HEIGHT - 8 });
+		}
+		void (async () => {
+			for (let i = 0; i < 60; i++) {
+				const b = findButton();
+				if (b !== null) {
+					b.focus();
+					return;
+				}
+				// The scroll event makes the virtual list render the row;
+				// poll frames until it is in the DOM.
+				await new Promise<void>((r) => requestAnimationFrame(() => r()));
+			}
+		})();
 	}
 
 	const scannedText = $derived.by((): string => {
@@ -326,20 +447,32 @@
 		{#if hasFilters}
 			<div class="results-row">
 				<p class="result"><strong>{results.length}</strong> of {scanState.accounts.length} match</p>
-				<label class="sort">
-					Sort
-					<select
-						value={cleanupState.sort}
-						onchange={(e) => cleanupState.setSort(e.currentTarget.value as Sort)}
+				<div class="results-tools">
+					<label class="sort">
+						Sort
+						<select
+							value={cleanupState.sort}
+							onchange={(e) => cleanupState.setSort(e.currentTarget.value as Sort)}
+						>
+							<option value="lastActiveAsc">Quietest first</option>
+							<option value="interactionAsc">Least recent interaction</option>
+							<option value="interactionDesc">Most interactions</option>
+							<option value="followedAsc">Oldest follows first</option>
+							<option value="rateDesc">Most active first</option>
+							<option value="name">Name</option>
+						</select>
+					</label>
+					<!-- Same sheet as "?"; the button only shows where the
+						keys work (hover + fine pointer). -->
+					<button
+						type="button"
+						class="shortcuts-btn"
+						aria-haspopup="dialog"
+						onclick={() => (shortcutsOpen = true)}
 					>
-						<option value="lastActiveAsc">Quietest first</option>
-						<option value="interactionAsc">Least recent interaction</option>
-						<option value="interactionDesc">Most interactions</option>
-						<option value="followedAsc">Oldest follows first</option>
-						<option value="rateDesc">Most active first</option>
-						<option value="name">Name</option>
-					</select>
-				</label>
+						Keyboard shortcuts
+					</button>
+				</div>
 			</div>
 
 			{#if noMatches}
@@ -349,21 +482,25 @@
 					<p class="empty">Nothing matches. Nice and tidy.</p>
 				{/if}
 			{:else}
-				<VirtualList items={results} rowHeight={ROW_HEIGHT} key={(a) => a.did}>
-					{#snippet row(item)}
-						<FollowRow
-							account={item}
-							checked={cleanupState.selected.has(item.did)}
-							kept={cleanupState.isKept(item.did)}
-							onToggle={(did) => cleanupState.toggle(did)}
-							onKeepToggle={(did) => cleanupState.toggleKeep(did)}
-							interactionsScannedAt={scanState.interactionsScannedAt}
-							interactionsCoveredSince={scanState.interactionsCoveredSince}
-							{myCreatedAt}
-							onPreview={openPreview}
-						/>
-					{/snippet}
-				</VirtualList>
+				<!-- The unstyled wrapper is the rows' top for the keyboard
+					shortcuts' scroll-into-view. -->
+				<div class="rows" bind:this={rowsEl}>
+					<VirtualList items={results} rowHeight={ROW_HEIGHT} key={(a) => a.did}>
+						{#snippet row(item)}
+							<FollowRow
+								account={item}
+								checked={cleanupState.selected.has(item.did)}
+								kept={cleanupState.isKept(item.did)}
+								onToggle={(did) => cleanupState.toggle(did)}
+								onKeepToggle={(did) => cleanupState.toggleKeep(did)}
+								interactionsScannedAt={scanState.interactionsScannedAt}
+								interactionsCoveredSince={scanState.interactionsCoveredSince}
+								{myCreatedAt}
+								onPreview={openPreview}
+							/>
+						{/snippet}
+					</VirtualList>
+				</div>
 
 				{#if cleanupState.targets.length > 0}
 					<SelectionBar
@@ -421,6 +558,8 @@
 	onApply={(id) => cleanupState.applyPreset(id)}
 	onClose={() => (presetSheetOpen = false)}
 />
+
+<ShortcutsSheet open={shortcutsOpen} onClose={() => (shortcutsOpen = false)} />
 
 <ReviewSheet
 	open={reviewOpen}
@@ -562,6 +701,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+		flex-wrap: wrap;
 		gap: var(--space-sm);
 		margin-bottom: var(--space-sm);
 	}
@@ -572,6 +712,11 @@
 	}
 	.result strong {
 		color: var(--color-text);
+	}
+	.results-tools {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm);
 	}
 	.sort {
 		display: flex;
@@ -588,6 +733,28 @@
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-sm);
 		padding: 4px;
+	}
+	/* The shortcuts button only shows where the keys work: a hoverable,
+	   fine-pointer device. A phone (coarse pointer) never sees it. */
+	.shortcuts-btn {
+		display: none;
+	}
+	@media (hover: hover) and (pointer: fine) {
+		.shortcuts-btn {
+			display: inline-block;
+			border: 1px solid var(--color-border);
+			background: transparent;
+			color: var(--color-text-muted);
+			font: inherit;
+			font-size: var(--text-sm);
+			border-radius: var(--radius-pill);
+			padding: 4px 10px;
+			min-height: var(--tap);
+			cursor: pointer;
+		}
+		.shortcuts-btn:hover {
+			color: var(--color-text);
+		}
 	}
 
 	.empty {
