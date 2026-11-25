@@ -37,7 +37,7 @@ export interface ProfileViewer {
 	blockedBy: boolean;
 	/** The user blocks them personally (a list block is blockingByList). */
 	blockingPersonally: boolean;
-	/** How many of the user's follows they also follow; null = unknown. */
+	/** How many of the user's follows also follow this account; null = unknown. */
 	knownFollowers: number | null;
 }
 

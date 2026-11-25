@@ -530,34 +530,38 @@
 			: undefined}
 	>
 		{#if hid.read}
-			{#if hid.lists.length > 0}
-				<ul class="hidden-list" aria-label="The lists hiding people you follow">
-					{#each hid.lists as l (l.uri + l.kind)}
-						<li>
-							{#if listHref(l.uri) !== null}
-								<a href={listHref(l.uri)} target="_blank" rel="external noopener noreferrer"
-									>{l.name}</a
+			<!-- One grid child: the card's 16 px gap would otherwise sit
+				 between the list and the blocks line, doubling the gap. -->
+			<div class="hidden-body">
+				{#if hid.lists.length > 0}
+					<ul class="hidden-list" aria-label="The lists hiding people you follow">
+						{#each hid.lists as l (l.uri + l.kind)}
+							<li>
+								{#if listHref(l.uri) !== null}
+									<a href={listHref(l.uri)} target="_blank" rel="external noopener noreferrer"
+										>{l.name}</a
+									>
+								{:else}
+									{l.name}
+								{/if}
+								<span class="hides">
+									{l.kind === 'mute' ? 'mutes' : 'blocks'}
+									{l.count}
+									{l.count === 1 ? 'follow' : 'follows'}</span
 								>
-							{:else}
-								{l.name}
-							{/if}
-							<span class="hides">
-								{l.kind === 'mute' ? 'mutes' : 'blocks'}
-								{l.count}
-								{l.count === 1 ? 'follow' : 'follows'}</span
-							>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-			{#if hid.blocksYou > 0}
-				<a class="blocks-line" href={resolve('cleanup?preset=blocksYou')}
-					>{plural(hid.blocksYou, 'person', 'people')}
-					block you</a
-				>
-			{:else}
-				<p class="blocks-line plain">No one you follow blocks you.</p>
-			{/if}
+							</li>
+						{/each}
+					</ul>
+				{/if}
+				{#if hid.blocksYou > 0}
+					<a class="blocks-line" href={resolve('cleanup?preset=blocksYou')}
+						>{plural(hid.blocksYou, 'person', 'people')}
+						block you</a
+					>
+				{:else}
+					<p class="blocks-line plain">No one you follow blocks you.</p>
+				{/if}
+			</div>
 		{:else}
 			<p class="empty">Scan again to check for follows hidden by a list or blocking you.</p>
 		{/if}
@@ -625,9 +629,10 @@
 		color: var(--color-text-muted);
 	}
 
-	/* "Hidden from you": one row per hiding list. */
+	/* "Hidden from you": one row per hiding list. Sits in .hidden-body with
+	   the blocks line, so the card's grid gap doesn't separate the two. */
 	.hidden-list {
-		margin: 0 0 var(--space-sm);
+		margin: 0;
 		padding: 0;
 		list-style: none;
 	}
@@ -652,15 +657,19 @@
 	.hidden-list .hides {
 		color: var(--color-text-muted);
 	}
+	/* Flex, not an inline-block with a 44 px line-height: the line box the
+	   inline-block sat on added extra space above it. Centered in its own
+	   box, the space above is the rows' own padding, so it reads like
+	   another row of the list above. */
 	.blocks-line {
-		display: inline-block;
+		display: flex;
+		align-items: center;
 		margin: 0;
 		font-size: var(--text-sm);
 		color: var(--color-link);
 		text-decoration: none;
 		font-weight: 600;
 		min-height: var(--tap);
-		line-height: var(--tap);
 	}
 	a.blocks-line:hover {
 		text-decoration: underline;

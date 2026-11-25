@@ -91,9 +91,9 @@
 			The profile data Bluesky returns for a signed-in account also says which of the people it
 			follows are muted or blocked by a moderation list it subscribes to, and which of them block
 			it. TidySky reads that from the same profile read it already does, so it needs no extra
-			permission. A list mute or list block wins over a follow: the account is counted as hidden,
-			not as a follow that doesn't follow back. While a block applies in either direction,
-			follow-back is unknown, so TidySky never guesses it.
+			permission. A list mute or list block wins over a follow, so their posts never reach you.
+			While a block applies in either direction, Bluesky hides whether they follow you back, so
+			TidySky shows follow-back as unknown instead of guessing.
 		</p>
 	</section>
 
