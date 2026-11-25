@@ -41,6 +41,12 @@
 // handle is down to zero width -- with the secondary lines smaller than
 // the name.
 //
+// It also opens the profile preview from Clean up's first row (demo mode,
+// one-way preset), phone-like (touch, like the close-behavior checks): no
+// horizontal overflow, focus lands on the sheet's title, and closing returns
+// focus to the row's name button. Run in light and dark, at a phone width
+// (360) and a desktop width (1280), in both browsers.
+//
 // It also opens the bottom sheets and checks them:
 // - presets and unfollowed-elsewhere, open, at 360 and 390 px: no horizontal
 //   overflow, every row fits the sheet and is fully visible or reachable by
@@ -106,6 +112,12 @@ const PAGES = [
 
 // The pages the two layout-checked sheets live on.
 const CLEANUP = { url: '/cleanup?demo=1', demo: true, done: /scanned (just now|\d+ minute)/ };
+// The preview check needs a page with rows: the one-way preset.
+const PREVIEW = {
+	url: '/cleanup?demo=1&preset=oneWay',
+	demo: true,
+	done: /scanned (just now|\d+ minute)/
+};
 const INSIGHTS = { url: '/insights?demo=1', demo: true, done: /Last scanned/ };
 // The only pages with follow rows: the WebKit run walks just these.
 const CLEANUP_PAGES = PAGES.filter((e) => e.url.startsWith('/cleanup'));
@@ -800,6 +812,76 @@ async function checkEditSheet(page, width) {
 	return pass;
 }
 
+/**
+ * The profile preview, from Clean up's first row: the row's name button
+ * opens the sheet, no horizontal overflow, focus is on the sheet's title,
+ * and closing returns focus to the opener.
+ */
+async function checkPreview(page, width, label) {
+	await settle(page, PREVIEW);
+	const opener = page.getByRole('button', { name: /^Preview / }).first();
+	await opener.scrollIntoViewIfNeeded();
+	// Mark the opener so the focus-restore check can find it by attribute
+	// (its text content is the whole row, not a stable string). A headless
+	// WebKit tap neither focuses the tapped button nor restores focus on
+	// close (a real phone does), so focus the opener first; the sheet's
+	// remembered-opener restore then models the phone on both engines.
+	await opener.evaluate((el) => {
+		el.setAttribute('data-preview-opener', '');
+		el.focus();
+	});
+	await opener.tap();
+	await sheetWaitOpen(page);
+
+	const overflow = await page.evaluate(
+		() => document.documentElement.scrollWidth > window.innerWidth + 1
+	);
+	const titleFocused = await sheetFocusOnTitle(page);
+	const cspBefore = cspViolations.length;
+	await page.getByRole('button', { name: 'Close' }).tap();
+	const closed = await sheetWaitClosed(page);
+	const cspNew = cspViolations.length - cspBefore;
+	const focusBack = await page.evaluate(() => {
+		const el = document.activeElement;
+		return el instanceof HTMLElement && el.hasAttribute('data-preview-opener');
+	});
+
+	let pass = report(`${label} open: no horizontal overflow @ ${width}px`, !overflow);
+	pass =
+		report(`${label} open: focus is on the title, not Close @ ${width}px`, titleFocused) && pass;
+	pass =
+		report(
+			`${label}: closes on Close, focus back on the opener @ ${width}px`,
+			closed && focusBack,
+			`closed=${closed}, focusBack=${focusBack}`
+		) && pass;
+	pass = report(`${label} open: no CSP violations @ ${width}px`, cspNew === 0) && pass;
+	return pass;
+}
+
+/**
+ * The preview sheet in one color scheme, phone-like (touch + mobile, like
+ * the close-behavior checks): one context, the viewport resized between the
+ * phone and desktop widths; the demo scan runs once per context.
+ */
+async function runPreview(browser, colorScheme) {
+	const context = await browser.newContext({
+		viewport: { width: 360, height: HEIGHT },
+		hasTouch: true,
+		isMobile: true,
+		colorScheme
+	});
+	const page = await context.newPage();
+	watchConsole(page);
+	let ok = true;
+	for (const width of [360, 1280]) {
+		await page.setViewportSize({ width, height: HEIGHT });
+		if (!(await checkPreview(page, width, `preview sheet (${colorScheme})`))) ok = false;
+	}
+	await context.close();
+	return ok;
+}
+
 /** The two bottom sheets, open, at this width. */
 async function checkSheetsOpen(page, width) {
 	let pass = true;
@@ -1062,6 +1144,11 @@ async function main() {
 					} else if (!(await runSheetRowsWidth(browser, width))) ok = false;
 				}
 				if (!(await runMobile(browser))) ok = false;
+				// The profile preview sheet, in light and dark, at a phone
+				// and a desktop width (one demo scan per context).
+				for (const scheme of ['light', 'dark']) {
+					if (!(await runPreview(browser, scheme))) ok = false;
+				}
 			} finally {
 				await browser.close();
 			}

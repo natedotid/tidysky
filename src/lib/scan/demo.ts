@@ -207,10 +207,12 @@ const OTHER_LANGS = ['es', 'de', 'fr', 'pt', 'ja'];
 /**
  * A handful of made-up accounts with edge-case names: very long (40+ char)
  * display names, emoji, non-Latin scripts, and a 45-char handle. The first
- * one is also the busiest poster, so the top charts show them. The demo
- * exercises the layout edge cases real accounts would hit.
+ * one is also the busiest poster, so the top charts show them. One of them
+ * also carries a long, multi-line bio, so the profile preview shows how a
+ * bio wraps. The demo exercises the layout edge cases real accounts would
+ * hit.
  */
-const SPECIALS: Array<{ name: string; handle?: string; rate: number }> = [
+const SPECIALS: Array<{ name: string; handle?: string; rate: number; bio?: string }> = [
 	{
 		name: 'Absolutelylegendaryskywatcher2026andbeyond',
 		handle: 'absolutelylegendaryskywatcher2026.bsky.social',
@@ -219,7 +221,11 @@ const SPECIALS: Array<{ name: string; handle?: string; rate: number }> = [
 	{ name: 'VeryLongHandleWithoutAnySpacesAtAllIndeed', rate: 24 },
 	{ name: 'River Cloud Meadow Keeper of the Northern Sky', rate: 18 },
 	{ name: 'Harbor Light Lighthouse Keeper & Foghorn Warden', rate: 12 },
-	{ name: 'Star Gazer ✨🌙🔭 Night Sky Photographer 📸', rate: 6 },
+	{
+		name: 'Star Gazer ✨🌙🔭 Night Sky Photographer 📸',
+		rate: 6,
+		bio: 'Sky watcher, night photographer, and keeper of the northern sky.\nI post about aurora forecasts, lighthouses, and the quiet parts of the coastline after the boats are in. Long walks, short coffee, and a very opinionated cat named Comet.\nThis bio is deliberately long, with line breaks, so the profile preview shows how a multi-line bio wraps and scrolls without pushing the sheet off the screen.'
+	},
 	{ name: 'Αστρονόμος του Βόρειου Ουρανού (Γραμμάτεας)', rate: 2.5 },
 	{ name: '北の空の番人・星と霧と灯台の記録係', rate: 1.2 },
 	{ name: 'حارسُ السماءِ الشماليِّ وكاتمُ أسرارِ الغيوم', rate: 0.4 }
@@ -478,7 +484,7 @@ export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): De
 			handle,
 			displayName: special?.name ?? makeName(handle),
 			avatar: null,
-			description: null,
+			description: special?.bio ?? null,
 			createdAt: new Date(createdMs).toISOString(),
 			followersCount: farm ? Math.round(between(10, 499)) : Math.round(between(10, 5000) * rand()),
 			followsCount: farm ? Math.round(between(5000, 9000)) : Math.round(between(50, 2000)),
