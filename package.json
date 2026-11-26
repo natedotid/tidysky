@@ -4,7 +4,7 @@
 	"version": "1.2.0",
 	"type": "module",
 	"license": "MIT",
-	"author": "Nate (https://nate.id)",
+	"author": "Nate Kirk (https://nate.id)",
 	"repository": "github:natedotid/tidysky",
 	"homepage": "https://tidysky.io",
 	"scripts": {
