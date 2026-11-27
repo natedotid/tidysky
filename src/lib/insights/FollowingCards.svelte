@@ -10,9 +10,10 @@
 		interactionWindowLabels
 	} from '#lib/scan/interaction-window';
 	import { plural } from '#lib/format';
+	import { busiestHour } from '#lib/charts/busiest';
 	import { logBuckets } from '#lib/charts/scale';
 	import BarChart from '#lib/charts/BarChart.svelte';
-	import Heatmap from '#lib/charts/Heatmap.svelte';
+	import HourChart from '#lib/charts/HourChart.svelte';
 	import LogHistogram from '#lib/charts/LogHistogram.svelte';
 	import RankList from '#lib/charts/RankList.svelte';
 	import StackedBar from '#lib/charts/StackedBar.svelte';
@@ -34,7 +35,8 @@
 		mostInteracted,
 		sizeDistribution,
 		whatTheyPost,
-		whenTheyPost
+		whenTheyPostFootnote,
+		whenTheyPostHours
 	} from './following';
 
 	const DAY = 86_400_000;
@@ -69,7 +71,24 @@
 	const buckets = $derived(activityBuckets(accounts, now));
 	const most = $derived(mostActive(accounts, 10));
 	const quietest = $derived(leastActive(accounts, 10));
-	const heat = $derived(whenTheyPost(accounts, now));
+	// --- when they post: hours of the day only, from the accounts with
+	// enough recent history to read a daily pattern.
+	const post = $derived(whenTheyPostHours(accounts));
+	const postHourFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric' });
+	const postBusiest = $derived(post.enough ? busiestHour(post.hours) : null);
+	const postTakeaway = $derived.by((): string | null => {
+		if (postBusiest === null) return null;
+		return `Busiest around ${postHourFmt.format(new Date(2024, 0, 1, postBusiest))}.`;
+	});
+	const postAria = $derived.by((): string => {
+		const base = `Estimated posts per hour of the day from the ${plural(
+			post.included,
+			'account',
+			'accounts'
+		)} you follow with enough recent posts`;
+		if (postBusiest === null) return `${base}.`;
+		return `${base}; busiest around ${postHourFmt.format(new Date(2024, 0, 1, postBusiest))}.`;
+	});
 	const what = $derived(whatTheyPost(accounts));
 	const sizes = $derived(sizeDistribution(accounts));
 	const months = $derived(followedByMonth(accounts, now, 12));
@@ -476,8 +495,18 @@
 		</div>
 	</Card>
 
-	<Card title="When they post" footnote={note('In your time zone.')}>
-		<Heatmap grid={heat} ariaLabel="Weekday and hour grid of when the accounts you follow post." />
+	<Card
+		title="When they post"
+		takeaway={postTakeaway ?? undefined}
+		footnote={note(whenTheyPostFootnote(post.included, post.excluded))}
+	>
+		<div class="chart-slot" style="min-height: 138px">
+			{#if post.enough}
+				<HourChart hours={post.hours} ariaLabel={postAria} />
+			{:else}
+				<p class="empty">Not enough history yet to tell when they post.</p>
+			{/if}
+		</div>
 	</Card>
 
 	<Card title="What they post" takeaway={repostTakeaway ?? undefined} footnote={note(null)}>

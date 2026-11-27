@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { busiestCell } from '#lib/charts/busiest';
+import { busiestHour } from '#lib/charts/busiest';
+import { CONFIG } from '#lib/config';
 import type {
 	ActivitySummary,
 	FollowAccount,
@@ -25,8 +26,8 @@ import {
 	mostInteracted,
 	sizeDistribution,
 	whatTheyPost,
-	whenTheyPost,
-	weekdayCoverage
+	whenTheyPostFootnote,
+	whenTheyPostHours
 } from './following';
 
 const NOW = new Date(2026, 10, 6); // 6 Nov 2026, local
@@ -353,238 +354,99 @@ describe('mostInteracted and leastInteracted', () => {
 	});
 });
 
-describe('whenTheyPost', () => {
+describe('whenTheyPostHours', () => {
 	const zeroGrid = (): number[][] => Array.from({ length: 7 }, () => new Array<number>(24).fill(0));
-	const sum = (g: number[][]): number => g.flat().reduce((s, v) => s + v, 0);
-	// Local midnight Mon 6 Jul 2026: late June / early July has no DST change
-	// in any time zone, so "N days back" keeps its local time here.
-	const MID = new Date(2026, 6, 6);
+	const at = (g: number[][], day: number, hour: number, count: number): number[][] => {
+		g[day][hour] = count;
+		return g;
+	};
+	/** 30 posts all at `hour`, `perDay` a day: a 30 / perDay-day sample. */
+	const steady = (hour: number, perDay: number) =>
+		act({ sampleSize: 30, itemsPerDay: perDay, weekdayHour: at(zeroGrid(), 0, hour, 30) });
 
-	it('rescales a sample that spans more than a week to one week of the rate', () => {
-		const g = zeroGrid();
-		g[4][20] = 14; // 14 items, all Thursday 8pm, 1 a day
-		const grid = whenTheyPost(
-			[acct({ did: 'a', activity: act({ weekdayHour: g, itemsPerDay: 1 }) })],
-			MID
-		);
-		// Span = 14 days ending exactly at local midnight: every weekday is
-		// covered twice, so the Thursday cell is 14 / 2.
-		expect(grid[4][20]).toBe(7);
-		expect(sum(grid)).toBe(7);
+	it('excludes an account whose recent posts cover under two days', () => {
+		// 30 posts at 120 a day is a quarter day of history: too little to
+		// read a daily pattern from.
+		const r = whenTheyPostHours([acct({ did: 'busy', activity: steady(13, 120) })]);
+		expect(r.included).toBe(0);
+		expect(r.excluded).toBe(1);
+		expect(r.enough).toBe(false);
+		expect(r.hours.every((v) => v === 0)).toBe(true);
 	});
 
-	it('a short sample spreads its hour mix over all seven weekdays', () => {
-		const g = zeroGrid();
-		g[1][12] = 30; // all 30 sampled items on one Monday, 6 a day
-		const grid = whenTheyPost(
-			[acct({ did: 'a', activity: act({ weekdayHour: g, itemsPerDay: 6 }) })],
-			NOW
-		);
-		// Span = 5 days: 6 items a day, every weekday, at 12.
-		for (let d = 0; d < 7; d += 1) expect(grid[d][12]).toBe(6);
-		expect(sum(grid)).toBe(42);
+	it('the hour mix does not move with the days the sample happened to cover', () => {
+		// The same 30 posts at 1pm, 3 a day, but one sample landed on
+		// Mondays and the other on Fridays: only the scan time moved, so the
+		// hours must come out the same.
+		const monday = at(zeroGrid(), 1, 13, 30);
+		const friday = at(zeroGrid(), 5, 13, 30);
+		const a = whenTheyPostHours([
+			acct({ did: 'a', activity: act({ sampleSize: 30, itemsPerDay: 3, weekdayHour: monday }) })
+		]);
+		const b = whenTheyPostHours([
+			acct({ did: 'b', activity: act({ sampleSize: 30, itemsPerDay: 3, weekdayHour: friday }) })
+		]);
+		expect(b.hours).toEqual(a.hours);
+		expect(a.included).toBe(1);
+		expect(a.hours[13]).toBe(3);
 	});
 
-	it('the busiest day comes from a full-week pattern, not a recent-day burst', () => {
-		// Heavy poster: 30 items all on one recent Monday, 6 a day (span 5 days).
-		const heavy = zeroGrid();
-		heavy[1][12] = 30;
-		// Light poster: 14 items over two weeks, all Thursday 8pm, 1 a day.
-		const light = zeroGrid();
-		light[4][20] = 14;
-		const grid = whenTheyPost(
-			[
-				acct({ did: 'heavy', activity: act({ weekdayHour: heavy, itemsPerDay: 6 }) }),
-				acct({ did: 'light', activity: act({ weekdayHour: light, itemsPerDay: 1 }) })
-			],
-			MID
-		);
-		// The heavy poster's hour sits on all seven days at 6; the light
-		// poster's Thursday cell (7) is the busiest, not the Monday burst.
-		for (let d = 0; d < 7; d += 1) expect(grid[d][12]).toBe(6);
-		expect(grid[4][20]).toBe(7);
-		expect(busiestCell(grid)).toEqual({ stored: 4, hour: 20, value: 7 });
+	it('includes an account whose sample is its whole history, even a short one', () => {
+		const r = whenTheyPostHours([
+			acct({
+				did: 'new',
+				activity: act({
+					sampleSize: 3,
+					exhausted: true,
+					itemsPerDay: 3,
+					weekdayHour: at(zeroGrid(), 2, 10, 3)
+				})
+			})
+		]);
+		expect(r.included).toBe(1);
+		expect(r.excluded).toBe(0);
+		expect(r.hours[10]).toBe(3);
 	});
 
-	it('a sample spanning exactly a week is used as is', () => {
-		const g = zeroGrid();
-		for (let d = 0; d < 7; d += 1) g[d][8] = 3; // 21 items, 3 a day, span 7
-		const grid = whenTheyPost(
-			[acct({ did: 'a', activity: act({ weekdayHour: g, itemsPerDay: 3 }) })],
-			MID
-		);
-		// Span = 7 days ending at local midnight: every weekday covered once.
-		expect(grid).toEqual(g);
+	it('weighs each account by its rate, so the busiest hour is right', () => {
+		const r = whenTheyPostHours([
+			acct({ did: 'a', activity: steady(9, 10) }),
+			acct({ did: 'b', activity: steady(21, 2) })
+		]);
+		expect(r.hours[9]).toBe(10);
+		expect(r.hours[21]).toBe(2);
+		expect(busiestHour(r.hours)).toBe(9);
 	});
 
-	it('skips accounts with no items or no rate', () => {
-		const g = zeroGrid();
-		g[3][12] = 5;
-		const grid = whenTheyPost(
-			[
-				acct({ did: 'no-items', activity: act({ itemsPerDay: 4 }) }),
-				acct({ did: 'no-rate', activity: act({ weekdayHour: g }) }),
-				acct({ did: 'none' })
-			],
-			NOW
-		);
-		expect(sum(grid)).toBe(0);
+	it('needs ten qualifying accounts before it says enough', () => {
+		const mk = (i: number) => acct({ did: `a${i}`, activity: steady(13, 3) });
+		const nine = Array.from({ length: CONFIG.whenTheyPostMinAccounts - 1 }, (_, i) => mk(i));
+		expect(whenTheyPostHours(nine).enough).toBe(false);
+		expect(whenTheyPostHours([...nine, mk(9)]).enough).toBe(true);
 	});
 
-	it('a uniform 14-day span has no recency bias on any weekday', () => {
-		// The account posts 1 item a day at 9am. A 14-day span covers every
-		// weekday exactly twice, and the one post the span misses (9am on the
-		// first day, before its noon start) is on the same weekday as the one
-		// extra post it includes (9am today), so the sample is perfectly
-		// uniform. (A 10-day span can't do this: its two half-days are
-		// different weekdays, so one weekday always keeps 2 posts over 1.5
-		// days of coverage.)
-		// Local noon on three different weekdays (Mon, Thu, Sun).
-		const days = [new Date(2026, 6, 6, 12), new Date(2026, 6, 2, 12), new Date(2026, 5, 28, 12)];
-		let first: ReturnType<typeof busiestCell> | undefined;
-		for (const now of days) {
-			const g = zeroGrid();
-			for (let d = 0; d < 7; d += 1) g[d][9] = 2; // 14 items, 9am, 2 per weekday
-			const grid = whenTheyPost(
-				[acct({ did: 'a', activity: act({ weekdayHour: g, itemsPerDay: 1 }) })],
-				now
-			);
-			for (let d = 0; d < 7; d += 1) expect(Math.abs(grid[d][9] - 1)).toBeLessThan(1e-9);
-			const busiest = busiestCell(grid);
-			if (first === undefined) first = busiest;
-			else expect(busiest).toEqual(first);
-		}
-		// All 9am cells tie; busiestCell breaks to Monday-first display order.
-		expect(first).toEqual({ stored: 1, hour: 9, value: 1 });
-	});
-
-	it('never divides by zero for spans of 7 days or more', () => {
-		// A 7+ day span covers every weekday, so occ[d] is never 0; the guard
-		// exists anyway. Check a spread of spans, including just above 7.
-		const spans: Array<[number, number]> = [
-			[7, 1],
-			[141, 20], // 7.05
-			[83, 10], // 8.3
-			[14, 1]
-		];
-		for (const [n, r] of spans) {
-			const g = zeroGrid();
-			g[0][0] = n; // all items Sunday midnight
-			const grid = whenTheyPost(
-				[acct({ did: 'a', activity: act({ weekdayHour: g, itemsPerDay: r }) })],
-				NOW
-			);
-			for (const row of grid) for (const v of row) expect(Number.isFinite(v)).toBe(true);
-		}
-	});
-
-	it('whenTheyPost on 1000 accounts with 1500-day spans finishes in under 20 ms', () => {
-		// A quiet account's span can be years (the demo's longest is 1829
-		// days); 1000 of them must not make the card's derived value slow.
-		const g = zeroGrid();
-		g[0][0] = 1500; // 1500 items, 1 a day: a 1500-day span
-		const accounts = Array.from({ length: 1000 }, (_, i) =>
-			acct({ did: `did:plc:${i}`, activity: act({ weekdayHour: g, itemsPerDay: 1 }) })
-		);
-		const t0 = performance.now();
-		const grid = whenTheyPost(accounts, MID);
-		const ms = performance.now() - t0;
-		expect(ms).toBeLessThan(20);
-		// And the result is still about one week of the rate per account.
-		const perAccount = sum(grid) / accounts.length;
-		expect(perAccount).toBeGreaterThan(6.9);
-		expect(perAccount).toBeLessThan(7.1);
-		for (const row of grid) for (const v of row) expect(Number.isFinite(v)).toBe(true);
+	it('ignores accounts that are gone, not active', () => {
+		const s = steady(13, 3);
+		const r = whenTheyPostHours([
+			acct({ did: 'gone', status: 'gone', activity: s }),
+			acct({ did: 'dead', status: 'deactivated', activity: s })
+		]);
+		expect(r.included).toBe(0);
+		expect(r.excluded).toBe(0);
+		expect(r.enough).toBe(false);
 	});
 });
 
-describe('weekdayCoverage', () => {
-	/**
-	 * The original day-by-day walk (each step ends at the next local midnight
-	 * or at `end`), kept as a test-only reference: the fast version must
-	 * match it to within 1e-9.
-	 */
-	function weekdayCoverageWalk(start: Date, end: Date): number[] {
-		const occ = new Array<number>(7).fill(0);
-		if (end.getTime() <= start.getTime()) return occ;
-		const boundaries: number[] = [start.getTime()];
-		const d0 = new Date(start);
-		let next = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + 1);
-		while (next.getTime() < end.getTime()) {
-			boundaries.push(next.getTime());
-			next = new Date(next.getFullYear(), next.getMonth(), next.getDate() + 1);
-		}
-		boundaries.push(end.getTime());
-		for (let i = 0; i < boundaries.length - 1; i += 1) {
-			const a = new Date(boundaries[i]);
-			const b = boundaries[i + 1];
-			const dayStart = new Date(a.getFullYear(), a.getMonth(), a.getDate()).getTime();
-			const dayEnd = new Date(a.getFullYear(), a.getMonth(), a.getDate() + 1).getTime();
-			occ[a.getDay()] += (b - a.getTime()) / (dayEnd - dayStart);
-		}
-		return occ;
-	}
-
-	it('exactly 7 days gives 1 for every weekday', () => {
-		// Sat Oct 31 00:00 -> Sat Nov 7 00:00 local: 7 full calendar days.
-		const occ = weekdayCoverage(new Date(2026, 9, 31), new Date(2026, 10, 7));
-		expect(occ).toEqual([1, 1, 1, 1, 1, 1, 1]);
-	});
-
-	it('10 days ending at local noon gives the ones, twos and half-day ends', () => {
-		// Fri 10 Jul 2026 12:00 back 10 days: Tue 30 Jun 12:00 -> Fri 10 Jul
-		// 12:00. July has no DST change in any time zone. Tuesday (start day)
-		// and Friday (today) each get a half day plus a full one; Wednesday
-		// and Thursday are fully covered twice.
-		const end = new Date(2026, 6, 10, 12);
-		const start = new Date(end.getTime() - 10 * 86_400_000);
-		const occ = weekdayCoverage(start, end);
-		expect(occ).toEqual([1, 1, 1.5, 2, 2, 1.5, 1]); // Sunday-first
-		expect(occ.reduce((s, v) => s + v, 0)).toBeCloseTo(10, 12);
-	});
-
-	it('a span crossing a DST change still sums to the span length within 1/24', () => {
-		// Monday Mar 9 2026 12:00 local, 10 days back. In US time zones the
-		// span crosses the spring-forward on Mar 8 (a 23h day), which shifts
-		// where the half-days land; the fractions must still sum to ~10.
-		const end = new Date(2026, 2, 9, 12);
-		const start = new Date(end.getTime() - 10 * 86_400_000);
-		const occ = weekdayCoverage(start, end);
-		expect(Math.abs(occ.reduce((s, v) => s + v, 0) - 10)).toBeLessThanOrEqual(1 / 24 + 1e-9);
-	});
-
-	it('matches the day-by-day walk for long spans ending at several times of day', () => {
-		// Spans from a week to the demo's longest (1829 days), ending at
-		// several times of day. The start dates make the long spans cross
-		// both US DST changes, and the DST-day and late-October starts
-		// straddle or sit on the changes even at the short lengths; in a
-		// time zone without DST there is nothing to straddle, but the two
-		// versions must still agree.
-		const starts = [
-			new Date(2024, 5, 15), // midsummer: the 400 and 1829 day spans cross DST
-			new Date(2026, 2, 8), // the US spring-forward day itself (23h)
-			new Date(2026, 10, 1), // the US fall-back day itself (25h)
-			new Date(2026, 9, 28), // the short spans straddle the US fall-back
-			new Date(2026, 10, 2) // just after it: a no-straddle control
-		];
-		const spans = [7, 10, 30, 400, 1829];
-		const times: Array<[number, number]> = [
-			[0, 0],
-			[9, 0],
-			[12, 0],
-			[15, 30],
-			[23, 59]
-		];
-		for (const s of starts) {
-			for (const span of spans) {
-				for (const [h, m] of times) {
-					const end = new Date(s.getFullYear(), s.getMonth(), s.getDate() + span, h, m);
-					const ref = weekdayCoverageWalk(s, end);
-					const got = weekdayCoverage(s, end);
-					for (let d = 0; d < 7; d += 1) expect(Math.abs(got[d] - ref[d])).toBeLessThan(1e-9);
-				}
-			}
-		}
+describe('whenTheyPostFootnote', () => {
+	it('uses the right plurals and drops the busy clause at zero', () => {
+		expect(whenTheyPostFootnote(1, 0)).toBe('In your time zone. Estimated from 1 account.');
+		expect(whenTheyPostFootnote(12, 0)).toBe('In your time zone. Estimated from 12 accounts.');
+		expect(whenTheyPostFootnote(12, 1)).toBe(
+			'In your time zone. Estimated from 12 accounts; 1 account posts too often to tell from their recent posts.'
+		);
+		expect(whenTheyPostFootnote(12, 3)).toBe(
+			'In your time zone. Estimated from 12 accounts; 3 accounts post too often to tell from their recent posts.'
+		);
 	});
 });
 

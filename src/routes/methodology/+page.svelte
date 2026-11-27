@@ -77,6 +77,34 @@
 	</section>
 
 	<section class="card">
+		<h2>When they post</h2>
+		<p>
+			The "When they post" card shows the hour of the day only, not the weekday. It is built from
+			each account's {CONFIG.activitySample} most recent posts, in your time zone, and it is an estimate:
+			an account's recent posts may cover only a short stretch, so the card only uses accounts whose sample
+			covers two or more days.
+		</p>
+		<ul>
+			<li>
+				Each account adds its mix of hours, weighted by its estimated posts per day, so the columns
+				add up to an estimate of how many posts the people you follow make in each hour.
+			</li>
+			<li>
+				An account whose recent posts cover under two days posts too often for the sample to show a
+				daily pattern, so it is left out. The card's footnote says how many accounts that is.
+			</li>
+			<li>
+				The exception is an account whose sample is its whole history: those posts are everything
+				the account has ever posted, so the account is included even if that is under two days.
+			</li>
+			<li>
+				Fewer than {CONFIG.whenTheyPostMinAccounts} accounts qualify, and the card says there is not enough
+				history yet, instead of showing a chart.
+			</li>
+		</ul>
+	</section>
+
+	<section class="card">
 		<h2>How "follows you back" works</h2>
 		<p>
 			For each account you follow, TidySky asks Bluesky whether that account follows you. The answer

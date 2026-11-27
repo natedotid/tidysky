@@ -3,6 +3,8 @@
  * follow" cards. Every function that depends on the clock takes an
  * explicit `now` so tests control the date.
  */
+import { CONFIG } from '#lib/config';
+import { plural } from '#lib/format';
 import type { FollowAccount } from '#lib/scan/types';
 
 const DAY = 86_400_000;
@@ -219,93 +221,68 @@ export function leastInteracted(accounts: FollowAccount[], n: number): FollowAcc
 }
 
 /**
- * How many days of each weekday (Sunday-first, the stored convention) the
- * interval [start, end] covers, in local time. Only the local day of `start`
- * and the local day of `end` are partially covered; every local day strictly
- * between them is covered in full. A full day is one of its weekday whatever
- * its real length (a DST day is 23 or 25 hours but still one day), so whole
- * weeks of full days add +1 to every weekday in one step and only the
- * leftover full days (fewer than 7) are counted one by one. The cost is
- * independent of the span's length, and the result is exact across DST
- * changes: a week crossing a change is still exactly 7 calendar days. The
- * partial days divide by their real length, so the fractions sum to the span
- * length in days within 1/24.
+ * Estimated posts per hour of the day (24 values, index = local hour), from
+ * the accounts whose recent posts are enough to read a daily pattern.
+ *
+ * An account's 30-item sample covers `sampleSize / itemsPerDay` days. If
+ * that span is under two days the sample is too short to show when during
+ * the day the account posts, so the account is left out and counted as
+ * `excluded`. An account whose sample is its whole history (exhausted) is
+ * included at its actual rate even with a short span: its recent posts are
+ * everything it posted. Each included account adds its hour mix, weighted
+ * by its items-per-day, so the columns sum to an estimate of how many posts
+ * the people you follow make in each hour of the day.
  */
-export function weekdayCoverage(start: Date, end: Date): number[] {
-	const occ = new Array<number>(7).fill(0);
-	if (end.getTime() <= start.getTime()) return occ;
-	const mid = (d: Date, offset = 0): number =>
-		new Date(d.getFullYear(), d.getMonth(), d.getDate() + offset).getTime();
-	const sMid = mid(start);
-	const eMid = mid(end);
-	if (sMid === eMid) {
-		// One local day: a single fraction of it.
-		occ[start.getDay()] = (end.getTime() - start.getTime()) / (mid(start, 1) - sMid);
-		return occ;
+export interface WhenTheyPostHours {
+	/** 24 values, estimated posts per hour of day, device time zone. */
+	hours: number[];
+	/** Active accounts whose recent posts cover two or more days (or whose
+	    sample is their whole history). */
+	included: number;
+	/** Active accounts whose recent posts cover under two days and whose
+	    sample is not their whole history. */
+	excluded: number;
+	/** included >= CONFIG.whenTheyPostMinAccounts. */
+	enough: boolean;
+}
+
+export function whenTheyPostHours(accounts: FollowAccount[]): WhenTheyPostHours {
+	const hours = new Array<number>(24).fill(0);
+	let included = 0;
+	let excluded = 0;
+	for (const a of accounts) {
+		if (a.status !== 'active') continue;
+		const act = a.activity;
+		if (act === null) continue;
+		let n = 0;
+		for (const row of act.weekdayHour) for (const v of row) n += v;
+		const r = act.itemsPerDay;
+		if (n === 0 || r === 0) continue;
+		if (n / r < 2 && !act.exhausted) {
+			excluded += 1;
+			continue;
+		}
+		included += 1;
+		for (let h = 0; h < 24; h += 1) {
+			let c = 0;
+			for (const row of act.weekdayHour) c += row[h] ?? 0;
+			hours[h] += (c / n) * r;
+		}
 	}
-	// The two end days, each a fraction of its real length (a DST day is 23
-	// or 25 hours).
-	occ[start.getDay()] += (mid(start, 1) - start.getTime()) / (mid(start, 1) - sMid);
-	occ[end.getDay()] += (end.getTime() - eMid) / (mid(end, 1) - eMid);
-	// Full days strictly between the two local dates. UTC day arithmetic
-	// counts calendar days exactly, with no DST involvement.
-	const fullDays =
-		(Date.UTC(end.getFullYear(), end.getMonth(), end.getDate()) -
-			Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())) /
-			DAY -
-		1;
-	const weeks = Math.floor(fullDays / 7);
-	for (let d = 0; d < 7; d += 1) occ[d] += weeks;
-	// The leftover full days are consecutive, starting the day after start.
-	const first = (start.getDay() + 1) % 7;
-	for (let i = 0; i < fullDays - weeks * 7; i += 1) occ[(first + i) % 7] += 1;
-	return occ;
+	return { hours, included, excluded, enough: included >= CONFIG.whenTheyPostMinAccounts };
 }
 
 /**
- * Weekday × hour grid, Sunday first (the stored convention), weighted so
- * each account contributes one week of its rate rather than its raw sample.
- * The stored sample covers only the last `n / itemsPerDay` days, so summed
- * raw it overcounts whatever recent days the sample happens to hold. Per
- * account:
- * - sample spans 7+ days: divide each weekday row by how many days of that
- *   weekday the span actually covers (weekdayCoverage). A 10-day span holds
- *   some weekdays twice and today only its elapsed fraction, so no weekday,
- *   in particular today, is counted as fully covered when it is not.
- * - shorter: the day mix is not (all 30 items can fall on one Monday), so
- *   spread the observed hour mix over all seven weekdays at full rate.
- * Both cases give posts per week in each cell.
+ * "In your time zone. Estimated from 12 accounts; 3 accounts post too often
+ * to tell from their recent posts." The second sentence is omitted when no
+ * account is left out for being too busy.
  */
-export function whenTheyPost(accounts: FollowAccount[], now: Date): number[][] {
-	const grid: number[][] = Array.from({ length: 7 }, () => new Array<number>(24).fill(0));
-	for (const a of accounts) {
-		const act = a.activity;
-		if (act === null) continue;
-		const g = act.weekdayHour;
-		let n = 0;
-		for (const row of g) for (const v of row) n += v;
-		const r = act.itemsPerDay;
-		if (n === 0 || r === 0) continue;
-		const spanDays = n / r;
-		if (spanDays >= 7) {
-			const occ = weekdayCoverage(new Date(now.getTime() - spanDays * DAY), now);
-			for (let d = 0; d < 7; d += 1) {
-				// A 7+ day span always covers every weekday, but guard anyway.
-				if (occ[d] <= 0) continue;
-				const row = g[d] ?? [];
-				for (let h = 0; h < 24; h += 1) grid[d][h] += (row[h] ?? 0) / occ[d];
-			}
-		} else {
-			const hourTotal = new Array<number>(24).fill(0);
-			for (let d = 0; d < 7; d += 1) for (let h = 0; h < 24; h += 1) hourTotal[h] += g[d]?.[h] ?? 0;
-			for (let h = 0; h < 24; h += 1) {
-				if (hourTotal[h] === 0) continue;
-				const add = (hourTotal[h] / n) * r;
-				for (let d = 0; d < 7; d += 1) grid[d][h] += add;
-			}
-		}
+export function whenTheyPostFootnote(included: number, excluded: number): string {
+	let s = `In your time zone. Estimated from ${plural(included, 'account', 'accounts')}`;
+	if (excluded > 0) {
+		s += `; ${plural(excluded, 'account posts', 'accounts post')} too often to tell from their recent posts`;
 	}
-	return grid;
+	return `${s}.`;
 }
 
 export interface WhatTheyPost {

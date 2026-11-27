@@ -31,3 +31,21 @@ export function busiestCell(grid: number[][]): BusiestCell | null {
 	}
 	return best > 0 ? { stored, hour, value: best } : null;
 }
+
+/**
+ * The single busiest hour of a 24-value hour-of-day array. Ties go to the
+ * earlier hour, so the named hour is always the leftmost of the tied
+ * columns. Null when every hour is zero.
+ */
+export function busiestHour(hours: number[]): number | null {
+	let best = -1;
+	let hour = -1;
+	for (let h = 0; h < 24; h += 1) {
+		const v = hours[h] ?? 0;
+		if (v > best) {
+			best = v;
+			hour = h;
+		}
+	}
+	return best > 0 ? hour : null;
+}

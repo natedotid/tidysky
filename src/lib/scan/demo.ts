@@ -893,6 +893,76 @@ export function demoLogEntry(accounts: FollowAccount[], now: Date): Omit<Unfollo
 	};
 }
 
+/**
+ * The demo population's daily rhythm: a morning bump with lunch and evening
+ * peaks. Relative weights over the 24 hours of the local day.
+ */
+const DAY_PATTERN = [
+	0,
+	0,
+	0,
+	0,
+	0,
+	0, // midnight to 5am: quiet
+	2,
+	4,
+	7,
+	6,
+	5,
+	4, // 6am to 11am
+	6,
+	9,
+	10,
+	7,
+	5,
+	4, // noon to 5pm
+	4,
+	6,
+	9,
+	10,
+	8,
+	5 // 6pm to 11pm
+];
+const PATTERN_TOTAL = DAY_PATTERN.reduce((s, v) => s + v, 0);
+
+/**
+ * Deterministic pseudo-random in [0, 1) from a timestamp. The rhythm below
+ * must not draw from the seeded stream: one shared stream feeds every
+ * account, and extra draws would move every later account and every pinned
+ * demo ratio.
+ */
+function hashUnit(x: number): number {
+	let h = Math.imul(x | 0, 2246822507);
+	h = Math.imul(h ^ (h >>> 13), 3266489909);
+	h ^= h >>> 16;
+	return (h >>> 0) / 4294967296;
+}
+
+/** The pattern's weighted hour of day for `refMs` (0-5 have no weight). */
+function patternSlot(refMs: number): number {
+	const u = hashUnit(refMs) * PATTERN_TOTAL;
+	let acc = 0;
+	for (let h = 0; h < 24; h += 1) {
+		acc += DAY_PATTERN[h];
+		if (u < acc) return h;
+	}
+	return 23;
+}
+
+/**
+ * The most recent rhythm-slot time strictly before `refMs`: the weighted
+ * hour, at its per-item jitter (plus or minus 15 minutes), on the same
+ * local day if that is already past, else the previous day.
+ */
+function latestSlotBefore(refMs: number): number {
+	const ref = new Date(refMs);
+	const mid = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate()).getTime();
+	const slot = patternSlot(refMs) * HOUR_MS;
+	const jitter = (hashUnit(refMs + 1013904223) - 0.5) * 30 * 60_000;
+	const cand = mid + slot + jitter;
+	return cand < refMs ? cand : cand - DAY_MS;
+}
+
 /** Walk backwards from the newest item, one gap at a time, until `max` items. */
 function makeFeed(
 	rand: () => number,
@@ -913,6 +983,30 @@ function makeFeed(
 		}
 		items.push(makeItem(rand, did, atMs));
 		atMs -= (DAY_MS / ratePerDay) * (0.4 + rand() * 1.2);
+	}
+	// The daily rhythm: real readers post in clusters (lunch, evening), and
+	// the "when they post" hour chart reads that shape. Low-rate accounts
+	// only: their samples span two or more days, so the chart uses them.
+	// High-rate accounts keep the flat walk: their samples are shorter than
+	// two days, the chart leaves them out, and the demo tests pin their
+	// estimates. Item 0 keeps its exact time: the newest post's age sets the
+	// account's status bucket. Each later item moves back to the most recent
+	// rhythm slot before both its walked time and the item above it (cap),
+	// and never before the account's first post.
+	if (ratePerDay <= 15 && items.length >= 2) {
+		let cap = Date.parse(items[0].at);
+		for (let i = 1; i < items.length; i += 1) {
+			const t = Date.parse(items[i].at);
+			const cand = latestSlotBefore(Math.min(t, cap));
+			if (cand < floor) {
+				// Too close to the account's first post to move: keep the
+				// walked time (the walk kept it at or after the floor).
+				cap = t;
+				continue;
+			}
+			items[i].at = new Date(cand).toISOString();
+			cap = cand;
+		}
 	}
 	return { items, exhausted };
 }
