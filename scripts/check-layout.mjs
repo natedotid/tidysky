@@ -71,6 +71,12 @@
 // touch (coarse-pointer) context the "Keyboard shortcuts" button next to the
 // Sort control is hidden at 390 px.
 //
+// It also checks the You tab's "When you post" card with the demo's own feed
+// shortened to 30 items (?demoFeed=30): under the 50-item minimum the card
+// must draw the 24-column hour chart, not the weekday grid, with a "Busiest
+// around" takeaway and a "From your last 30 posts and reposts" footnote.
+// Chromium only.
+//
 // The sheet, row and keyboard checks run in both Chromium and WebKit (the
 // WebKit run is the one that models Safari); WebKit also gets the
 // close-behavior suite.
@@ -129,6 +135,9 @@ const PREVIEW = {
 	done: /scanned (just now|\d+ minute)/
 };
 const INSIGHTS = { url: '/insights?demo=1', demo: true, done: /Last scanned/ };
+// The under-50 "when you post" hour chart: the demo's own feed shortened
+// with ?demoFeed=30 (the default demo feed has ~300 items, the grid path).
+const SHORT_FEED = { url: '/insights?demo=1&demoFeed=30', demo: true, done: /Last scanned/ };
 // The only pages with follow rows: the WebKit run walks just these.
 const CLEANUP_PAGES = PAGES.filter((e) => e.url.startsWith('/cleanup'));
 
@@ -1208,6 +1217,53 @@ async function checkRecentChangesAlignment(page, width, url) {
 	);
 }
 
+/**
+ * The under-50 "When you post" hour chart. Fresh context: you-data is
+ * cached in the demo database, so a context that already ran the full demo
+ * would serve the ~300-item feed from the cache and the card would show
+ * the grid. The hour chart has 24 track columns plus one value bar per
+ * non-empty hour (the grid would have 168 cells).
+ */
+async function runYouHourChart(browser, width) {
+	const context = await browser.newContext({ viewport: { width, height: HEIGHT } });
+	const page = await context.newPage();
+	watchConsole(page);
+	await settle(page, SHORT_FEED);
+	await page.getByRole('button', { name: 'You', exact: true }).click();
+	await page.waitForTimeout(300);
+	const m = await page.evaluate(async () => {
+		const card = [...document.querySelectorAll('.card')].find((c) =>
+			(c.querySelector('h2')?.textContent ?? '').startsWith('When you post')
+		);
+		if (card === undefined) return null;
+		card.scrollIntoView();
+		// The svg lazy-mounts when the figure nears the viewport.
+		const t0 = Date.now();
+		while (card.querySelector('svg') === null && Date.now() - t0 < 5000) {
+			await new Promise((r) => setTimeout(r, 100));
+		}
+		const svg = card.querySelector('svg');
+		return {
+			takeaway: card.querySelector('.takeaway')?.textContent ?? '',
+			footnote: card.querySelector('.footnote')?.textContent ?? '',
+			rects: svg ? svg.querySelectorAll('rect').length : 0
+		};
+	});
+	const ok =
+		m !== null &&
+		m.rects >= 24 &&
+		m.rects <= 48 &&
+		/^Busiest around /.test(m.takeaway) &&
+		m.footnote.includes('From your last 30 posts and reposts.');
+	const pass = report(
+		`you hour chart @ ${width}px: short demo feed draws the hour chart`,
+		ok,
+		m === null ? 'no "When you post" card' : JSON.stringify(m)
+	);
+	await context.close();
+	return pass;
+}
+
 /** Every check at this width (Chromium): all pages, all suites, sheets open. */
 async function runFullWidth(browser, width) {
 	const context = await browser.newContext({ viewport: { width, height: HEIGHT } });
@@ -1333,6 +1389,10 @@ async function main() {
 						if (!(await runFullWidth(browser, width))) ok = false;
 					} else if (!(await runSheetRowsWidth(browser, width))) ok = false;
 				}
+				// Chromium only: a second full demo scan in WebKit would add
+				// minutes without extra coverage (the card logic is
+				// browser-independent).
+				if (b.full && !(await runYouHourChart(browser, 390))) ok = false;
 				if (!(await runMobile(browser))) ok = false;
 				// The profile preview sheet, in light and dark, at the phone
 				// widths and a desktop width (one demo scan per context).

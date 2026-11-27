@@ -7,8 +7,10 @@
 	import { compact, plural } from '#lib/format';
 	import type { YouData } from '#lib/scan/source';
 	import type { FollowAccount } from '#lib/scan/types';
+	import { busiestHour } from '#lib/charts/busiest';
 	import BarChart from '#lib/charts/BarChart.svelte';
 	import Heatmap from '#lib/charts/Heatmap.svelte';
+	import HourChart from '#lib/charts/HourChart.svelte';
 	import Card from '#lib/ui/Card.svelte';
 
 	import {
@@ -17,7 +19,7 @@
 		followerCardCopy,
 		followerMix,
 		myMix,
-		myPostingGrid,
+		myPosting,
 		snapshot,
 		topPostLine
 	} from './you';
@@ -44,8 +46,20 @@
 	}
 	const backLine = $derived(followBackLine(snap.followBackShare, snap.followBackUnknown));
 
-	// --- when you post
-	const heat = $derived(myPostingGrid(you.feed));
+	// --- when you post: under the configured minimum, an hour-of-day chart
+	// (the weekday mix is too thin to read); at or above it, the grid.
+	const post = $derived(myPosting(you.feed));
+	const postHourFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric' });
+	const postBusiest = $derived(post.kind === 'hours' ? busiestHour(post.hours) : null);
+	const postTakeaway = $derived.by((): string | null => {
+		if (postBusiest === null) return null;
+		return `Busiest around ${postHourFmt.format(new Date(2024, 0, 1, postBusiest))}.`;
+	});
+	const postAria = $derived.by((): string => {
+		const base = `Your posts and reposts by hour of the day, ${you.feed.length} items`;
+		if (postBusiest === null) return `${base}.`;
+		return `${base}; busiest around ${postHourFmt.format(new Date(2024, 0, 1, postBusiest))}.`;
+	});
 
 	// --- what you post
 	const mix = $derived(myMix(you.feed));
@@ -147,11 +161,21 @@
 		{/if}
 	</Card>
 
-	<Card title="When you post" footnote={note('In your time zone.')}>
-		{#if you.feed.length > 0}
-			<Heatmap grid={heat} ariaLabel="Weekday and hour grid of when you post." />
-		{:else}
+	<Card
+		title="When you post"
+		takeaway={post.kind === 'hours' ? (postTakeaway ?? undefined) : undefined}
+		footnote={note(
+			`In your time zone. From your last ${plural(you.feed.length, 'post and repost', 'posts and reposts')}.`
+		)}
+	>
+		{#if post.kind === 'hours' && you.feed.length === 0}
 			<p class="empty">No posts in your recent feed.</p>
+		{:else if post.kind === 'grid'}
+			<Heatmap grid={post.grid} ariaLabel="Weekday and hour grid of when you post." />
+		{:else}
+			<div class="chart-slot" style="min-height: 138px">
+				<HourChart hours={post.hours} ariaLabel={postAria} />
+			</div>
 		{/if}
 	</Card>
 

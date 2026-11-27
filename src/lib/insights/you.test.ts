@@ -3,12 +3,15 @@ import { describe, expect, it } from 'vitest';
 import type { OwnFeedItem, ProfileLite } from '#lib/scan/source';
 import type { FollowAccount } from '#lib/scan/types';
 
+import { CONFIG } from '#lib/config';
+
 import {
 	engagement,
 	followBackLine,
 	followerCardCopy,
 	followerMix,
 	myMix,
+	myPosting,
 	myPostingGrid,
 	shorten,
 	snapshot,
@@ -156,6 +159,40 @@ describe('myPostingGrid', () => {
 		expect(grid[1][21]).toBe(2); // Monday 9pm, reposts included
 		expect(grid[2][8]).toBe(1); // Tuesday 8am
 		expect(grid[0][12]).toBe(0);
+	});
+});
+
+describe('myPosting', () => {
+	const mk = (n: number): OwnFeedItem[] =>
+		Array.from({ length: n }, (_, i) =>
+			item({ at: new Date(2026, 10, 1 + (i % 7), i % 24).toISOString() })
+		);
+
+	it('uses the hour chart under the minimum and the grid at it', () => {
+		expect(myPosting(mk(CONFIG.whenYouPostMinItems - 1)).kind).toBe('hours');
+		expect(myPosting(mk(CONFIG.whenYouPostMinItems)).kind).toBe('grid');
+	});
+
+	it('counts raw items per hour of the day', () => {
+		const items = [
+			item({ at: new Date(2026, 10, 2, 9).toISOString() }),
+			item({ at: new Date(2026, 10, 2, 9, 30).toISOString(), kind: 'repost' }),
+			item({ at: new Date(2026, 10, 3, 13).toISOString() })
+		];
+		const p = myPosting(items);
+		expect(p.kind).toBe('hours');
+		if (p.kind === 'hours') {
+			expect(p.hours[9]).toBe(2); // reposts included
+			expect(p.hours[13]).toBe(1);
+			expect(p.hours.reduce((s, v) => s + v, 0)).toBe(3);
+		}
+	});
+
+	it('at the minimum the grid matches myPostingGrid', () => {
+		const items = mk(CONFIG.whenYouPostMinItems);
+		const p = myPosting(items);
+		expect(p.kind).toBe('grid');
+		if (p.kind === 'grid') expect(p.grid).toEqual(myPostingGrid(items));
 	});
 });
 

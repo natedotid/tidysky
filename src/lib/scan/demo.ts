@@ -259,7 +259,12 @@ export interface DemoData {
 	rateByDid: Map<string, number>;
 }
 
-export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): DemoData {
+export function generateDemoData(
+	seed = 42,
+	count = 850,
+	nowMs = Date.now(),
+	opts: { meFeedItems?: number } = {}
+): DemoData {
 	const rand = mulberry32(seed);
 	const between = (min: number, max: number): number => min + rand() * (max - min);
 	const pick = <T>(arr: T[]): T => arr[Math.floor(rand() * arr.length)];
@@ -545,9 +550,12 @@ export function generateDemoData(seed = 42, count = 850, nowMs = Date.now()): De
 	const meRand = mulberry32(seed * 7919 + 13);
 	const meFeed: OwnFeedItem[] = [];
 	const meRate = 3; // items/day over a ~110-day window
+	// opts.meFeedItems (the ?demoFeed= parameter) shortens the feed, so the
+	// under-50 "when you post" hour chart can be checked without real data.
+	const meFeedCap = opts.meFeedItems ?? CONFIG.youFeedSample;
 	{
 		let atMs = nowMs - HOUR_MS * (0.5 + meRand());
-		while (meFeed.length < CONFIG.youFeedSample) {
+		while (meFeed.length < meFeedCap) {
 			atMs -= (DAY_MS / meRate) * (0.4 + meRand() * 1.2);
 			if (atMs < nowMs - 110 * DAY_MS) break;
 			meFeed.push(makeOwnItem(meRand, atMs));
@@ -1095,7 +1103,17 @@ export class DemoSource implements DataSource {
 	private waiters: Array<() => void> = [];
 
 	constructor(seed = 42, count = 850, nowMs = Date.now()) {
-		this.data = generateDemoData(seed, count, nowMs);
+		// ?demoFeed=30 (with ?demo=1) shortens the own feed, so the under-50
+		// "when you post" hour chart can be checked without real sign-in data.
+		let meFeedItems: number | undefined;
+		if (typeof window !== 'undefined') {
+			const v = new URLSearchParams(window.location.search).get('demoFeed');
+			if (v !== null) {
+				const n = Number(v);
+				if (Number.isInteger(n) && n > 0) meFeedItems = n;
+			}
+		}
+		this.data = generateDemoData(seed, count, nowMs, { meFeedItems });
 	}
 
 	/** The DIDs unfollowed elsewhere, for the seeded previous snapshot. */

@@ -14,6 +14,7 @@ export const CONFIG = {
 	interactionWindowDays: 365, // how far back "last interaction" looks
 	interactionMaxRecordsPerCollection: 10_000, // cap per own-record type per scan
 	whenTheyPostMinAccounts: 10, // fewer qualifying accounts and "when they post" says not enough history
+	whenYouPostMinItems: 50, // 50 or more of your own items and "when you post" draws the weekday grid; fewer, the hour chart
 	scanReloadMs: 5_000, // how often the app re-reads partial scan data while a scan runs
 	writeBatchSize: 100, // applyWrites operations per call (200 worked in testing, capped at 100)
 	writeBatchPauseMs: 2_000,

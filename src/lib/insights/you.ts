@@ -78,6 +78,24 @@ export function myPostingGrid(items: OwnFeedItem[]): number[][] {
 	return grid;
 }
 
+/**
+ * What the "When you post" card should draw. With fewer than
+ * CONFIG.whenYouPostMinItems items the weekday mix is too thin to read (a
+ * few dozen posts can all fall on two weekdays), so the card draws the raw
+ * counts per hour of the day instead; with that many or more, the full
+ * weekday × hour grid.
+ */
+export type MyPosting = { kind: 'hours'; hours: number[] } | { kind: 'grid'; grid: number[][] };
+
+export function myPosting(items: OwnFeedItem[]): MyPosting {
+	if (items.length < CONFIG.whenYouPostMinItems) {
+		const hours = new Array<number>(24).fill(0);
+		for (const item of items) hours[new Date(item.at).getHours()] += 1;
+		return { kind: 'hours', hours };
+	}
+	return { kind: 'grid', grid: myPostingGrid(items) };
+}
+
 export interface YouMix {
 	/** 0–1 shares of the sample, all items. */
 	share: { post: number; reply: number; quote: number; repost: number };
