@@ -348,6 +348,14 @@
 			>
 				Post to @tidysky.io
 			</a>
+			or
+			<a
+				href="https://github.com/natedotid/tidysky/issues"
+				target="_blank"
+				rel="external noopener noreferrer"
+			>
+				open an issue on GitHub
+			</a>.
 		</p>
 	</section>
 </div>

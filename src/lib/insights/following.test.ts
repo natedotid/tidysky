@@ -16,6 +16,7 @@ import {
 	followBackTakeaway,
 	followedByMonth,
 	followedInLastDays,
+	followedMonthsBack,
 	hiddenFromYou,
 	listHref,
 	interactionBuckets,
@@ -24,6 +25,7 @@ import {
 	leastInteracted,
 	mostActive,
 	mostInteracted,
+	sizeBucketPhrase,
 	sizeDistribution,
 	whatTheyPost,
 	whenTheyPostFootnote,
@@ -501,6 +503,24 @@ describe('sizeDistribution', () => {
 	});
 });
 
+describe('sizeBucketPhrase', () => {
+	it('reads the "0" bucket as no followers', () => {
+		expect(sizeBucketPhrase('0')).toBe('no followers');
+	});
+
+	it('reads every range bucket as "from to followers"', () => {
+		expect(sizeBucketPhrase('1–9')).toBe('1 to 9 followers');
+		expect(sizeBucketPhrase('10–99')).toBe('10 to 99 followers');
+		expect(sizeBucketPhrase('100–999')).toBe('100 to 999 followers');
+		expect(sizeBucketPhrase('1k–9.9k')).toBe('1k to 9.9k followers');
+		expect(sizeBucketPhrase('10k–99k')).toBe('10k to 99k followers');
+	});
+
+	it('reads the open bucket as "or more followers"', () => {
+		expect(sizeBucketPhrase('100k+')).toBe('100k or more followers');
+	});
+});
+
 describe('followedByMonth', () => {
 	it('includes empty months, oldest first, and ignores follows outside the window', () => {
 		// Local midday dates: a UTC-midnight string would shift calendar day
@@ -517,6 +537,29 @@ describe('followedByMonth', () => {
 			{ month: '2026-10', count: 0 },
 			{ month: '2026-11', count: 1 }
 		]);
+	});
+});
+
+describe('followedMonthsBack', () => {
+	// NOW is 6 Nov 2026 (month index 10).
+	it('a 2-month-old account shows 3 months (the floor, from its creation month)', () => {
+		expect(followedMonthsBack(new Date(2026, 8, 6).toISOString(), NOW)).toBe(3);
+	});
+
+	it('a 5-month-old account starts at its creation month (6 months back)', () => {
+		expect(followedMonthsBack(new Date(2026, 5, 6).toISOString(), NOW)).toBe(6);
+	});
+
+	it('a 2-year-old account is capped at 12 months', () => {
+		expect(followedMonthsBack(new Date(2024, 10, 6).toISOString(), NOW)).toBe(12);
+	});
+
+	it('an unknown creation date keeps 12 months', () => {
+		expect(followedMonthsBack(null, NOW)).toBe(12);
+	});
+
+	it('a brand-new account (created this month) still shows the 3-month floor', () => {
+		expect(followedMonthsBack(new Date(2026, 10, 1).toISOString(), NOW)).toBe(3);
 	});
 });
 

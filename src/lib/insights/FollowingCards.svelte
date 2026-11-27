@@ -25,6 +25,7 @@
 		followBackTakeaway,
 		followedByMonth,
 		followedInLastDays,
+		followedMonthsBack,
 		hiddenFromYou,
 		interactionBuckets,
 		interactionCount,
@@ -33,6 +34,7 @@
 		listHref,
 		mostActive,
 		mostInteracted,
+		sizeBucketPhrase,
 		sizeDistribution,
 		whatTheyPost,
 		whenTheyPostFootnote,
@@ -91,7 +93,10 @@
 	});
 	const what = $derived(whatTheyPost(accounts));
 	const sizes = $derived(sizeDistribution(accounts));
-	const months = $derived(followedByMonth(accounts, now, 12));
+	// From the month this account was created (at least 3, at most 12
+	// months); an unknown creation date keeps the 12.
+	const monthsBack = $derived(followedMonthsBack(myCreatedAt, now));
+	const months = $derived(followedByMonth(accounts, now, monthsBack));
 	const back = $derived(followBack(accounts));
 	const recentFollows = $derived(followedInLastDays(accounts, now, 30));
 
@@ -139,6 +144,8 @@
 	]);
 	const quietTakeaway = $derived.by((): string => {
 		const n = buckets.quiet + buckets.never + buckets.gone;
+		if (n === 0)
+			return `All ${accounts.length} accounts you follow have posted in the last 90 days.`;
 		return `${n} of ${accounts.length} ${n === 1 ? "hasn't" : "haven't"} posted in 90 days or ${
 			n === 1 ? 'is' : 'are'
 		} gone.`;
@@ -322,9 +329,7 @@
 		let best = logBuckets(sizes)[0];
 		for (const b of logBuckets(sizes)) if (b.count > best.count) best = b;
 		if (best.count === 0) return null;
-		if (best.label === '0') return 'Most people you follow have no followers.';
-		if (best.label.endsWith('+')) return `Most people you follow have ${best.label} followers.`;
-		return `Most people you follow have between ${best.label} followers.`;
+		return `Most people you follow have ${sizeBucketPhrase(best.label)}.`;
 	});
 
 	// --- do they follow back
@@ -344,8 +349,8 @@
 		// An older scan has no viewer readings: the card body asks for a
 		// rescan, so there is no takeaway.
 		if (!hid.read) return null;
-		if (hid.hidden === 0) return 'None of the people you follow are hidden by a list';
-		return `${plural(hid.hidden, 'person you follow is', 'people you follow are')} hidden by a list you subscribe to`;
+		if (hid.hidden === 0) return 'None of the people you follow are hidden by a list.';
+		return `${plural(hid.hidden, 'person you follow is', 'people you follow are')} hidden by a list you subscribe to.`;
 	});
 
 	// --- when you followed them
@@ -599,7 +604,7 @@
 	<Card title="When you followed them" takeaway={monthTakeaway} footnote={note(null)}>
 		<BarChart
 			rows={monthRows}
-			ariaLabel="How many accounts you followed per month, last 12 months."
+			ariaLabel={`How many accounts you followed per month, last ${monthsBack} months.`}
 		/>
 	</Card>
 </div>

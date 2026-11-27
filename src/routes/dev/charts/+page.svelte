@@ -154,7 +154,7 @@
 		/>
 	</Card>
 
-	<Card title="How big are they" takeaway="Most people you follow have between 100–999 followers.">
+	<Card title="How big are they" takeaway="Most people you follow have 100 to 999 followers.">
 		<LogHistogram
 			values={FOLLOWERS}
 			youValue={1200}

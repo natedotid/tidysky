@@ -324,6 +324,34 @@ export function sizeDistribution(accounts: FollowAccount[]): number[] {
 }
 
 /**
+ * The follower-count phrase for the "How big are they" takeaway, from a
+ * bucket label: "0" reads "no followers", a range label like "10k–99k"
+ * reads "10k to 99k followers", and the open "100k+" reads "100k or more
+ * followers".
+ */
+export function sizeBucketPhrase(label: string): string {
+	if (label === '0') return 'no followers';
+	if (label.endsWith('+')) return `${label.slice(0, -1)} or more followers`;
+	const [from, to] = label.split('–');
+	return `${from} to ${to} followers`;
+}
+
+/**
+ * How many months "When you followed them" looks back: from the month the
+ * account was created to now, at least 3 months (so a very new account
+ * still shows a readable chart) and at most 12; 12 when the creation date
+ * is unknown. The +1 includes the creation month itself.
+ */
+export function followedMonthsBack(createdAt: string | null, now: Date): number {
+	if (createdAt === null) return 12;
+	const created = new Date(createdAt);
+	if (Number.isNaN(created.getTime())) return 12;
+	const diff =
+		(now.getFullYear() - created.getFullYear()) * 12 + (now.getMonth() - created.getMonth());
+	return Math.max(3, Math.min(12, diff + 1));
+}
+
+/**
  * Follows per calendar month (device-local), oldest first, ending at the
  * month of `now`; months with no follows are 0.
  */

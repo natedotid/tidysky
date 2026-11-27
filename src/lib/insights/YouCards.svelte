@@ -37,13 +37,18 @@
 
 	// --- at a glance
 	const snap = $derived(snapshot(you.profile, accounts, now));
-	function ageLabel(days: number): string {
-		if (days <= 0) return '—';
+	/**
+	 * The age tile as number plus unit: the number in the number font, the
+	 * unit in the regular font, like the other tiles.
+	 */
+	function ageParts(days: number): { num: string; unit: string } {
+		if (days <= 0) return { num: '—', unit: '' };
 		const years = Math.floor(days / 365);
-		if (years >= 1) return `${years} ${years === 1 ? 'year' : 'years'}`;
+		if (years >= 1) return { num: String(years), unit: years === 1 ? 'year' : 'years' };
 		const months = Math.max(1, Math.floor(days / 30));
-		return `${months} ${months === 1 ? 'month' : 'months'}`;
+		return { num: String(months), unit: months === 1 ? 'month' : 'months' };
 	}
+	const age = $derived(ageParts(snap.accountAgeDays));
 	const backLine = $derived(followBackLine(snap.followBackShare, snap.followBackUnknown));
 
 	// --- when you post: under the configured minimum, an hour-of-day chart
@@ -150,7 +155,9 @@
 				<span class="lbl">Posts</span>
 			</div>
 			<div class="tile">
-				<span class="num big">{ageLabel(snap.accountAgeDays)}</span>
+				<span class="num big">
+					{age.num}<span class="unit">{age.unit !== '' ? ` ${age.unit}` : ''}</span>
+				</span>
 				<span class="lbl">Account age</span>
 			</div>
 		</div>
@@ -183,8 +190,8 @@
 		title="What you post"
 		footnote={note(
 			you.feed.length === 1
-				? 'Your last post or reply.'
-				: `Your last ${you.feed.length} posts and replies.`
+				? 'Your last post, reply or repost.'
+				: `Your last ${you.feed.length} posts, replies and reposts.`
 		)}
 	>
 		{#if you.feed.length > 0}
@@ -296,6 +303,10 @@
 		font-size: var(--text-xl);
 		line-height: 1.1;
 		overflow-wrap: anywhere;
+	}
+	/* The age tile's unit ("years", "month") stays in the regular font. */
+	.unit {
+		font-family: var(--font-sans);
 	}
 	.lbl {
 		font-size: var(--text-xs);
