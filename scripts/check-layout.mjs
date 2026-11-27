@@ -73,9 +73,10 @@
 //
 // It also checks the You tab's "When you post" card with the demo's own feed
 // shortened to 30 items (?demoFeed=30): under the 50-item minimum the card
-// must draw the 24-column hour chart, not the weekday grid, with a "Busiest
-// around" takeaway and a "From your last 30 posts and reposts" footnote.
-// Chromium only.
+// must draw the 24-column hour chart, not the weekday grid, with a
+// part-of-the-day takeaway ("You post most in the morning." or "Your posts
+// are spread across the day.") and a "From your last 30 posts and reposts"
+// footnote. Chromium only.
 //
 // It also checks every hour chart's tick labels at 360, 390 and 1280 px, in
 // both browsers: each label's box must sit inside the chart's box, so the
@@ -1315,7 +1316,9 @@ async function runYouHourChart(browser, width) {
 		m !== null &&
 		m.rects >= 24 &&
 		m.rects <= 48 &&
-		/^Busiest around /.test(m.takeaway) &&
+		/^(You post most (in the morning|in the afternoon|in the evening|at night)\.|Your posts are spread across the day\.)$/.test(
+			m.takeaway
+		) &&
 		m.footnote.includes('From your last 30 posts and reposts.');
 	const pass = report(
 		`you hour chart @ ${width}px: short demo feed draws the hour chart`,

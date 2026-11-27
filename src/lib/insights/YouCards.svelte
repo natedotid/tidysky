@@ -7,7 +7,6 @@
 	import { compact, plural } from '#lib/format';
 	import type { YouData } from '#lib/scan/source';
 	import type { FollowAccount } from '#lib/scan/types';
-	import { busiestHour } from '#lib/charts/busiest';
 	import BarChart from '#lib/charts/BarChart.svelte';
 	import Heatmap from '#lib/charts/Heatmap.svelte';
 	import HourChart from '#lib/charts/HourChart.svelte';
@@ -20,6 +19,7 @@
 		followerMix,
 		myMix,
 		myPosting,
+		myPostingPartTakeaway,
 		snapshot,
 		topPostLine
 	} from './you';
@@ -52,18 +52,15 @@
 	const backLine = $derived(followBackLine(snap.followBackShare, snap.followBackUnknown));
 
 	// --- when you post: under the configured minimum, an hour-of-day chart
-	// (the weekday mix is too thin to read); at or above it, the grid.
+	// (the weekday mix is too thin to read); at or above it, the grid. The
+	// under-50 takeaway names a part of the day, not a single hour: with a
+	// handful of posts a single-hour winner would be a coin flip.
 	const post = $derived(myPosting(you.feed));
-	const postHourFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric' });
-	const postBusiest = $derived(post.kind === 'hours' ? busiestHour(post.hours) : null);
-	const postTakeaway = $derived.by((): string | null => {
-		if (postBusiest === null) return null;
-		return `Busiest around ${postHourFmt.format(new Date(2024, 0, 1, postBusiest))}.`;
-	});
+	const postTakeaway = $derived(post.kind === 'hours' ? myPostingPartTakeaway(post.hours) : null);
 	const postAria = $derived.by((): string => {
 		const base = `Your posts and reposts by hour of the day, ${you.feed.length} items`;
-		if (postBusiest === null) return `${base}.`;
-		return `${base}; busiest around ${postHourFmt.format(new Date(2024, 0, 1, postBusiest))}.`;
+		if (postTakeaway === null) return `${base}.`;
+		return `${base}. ${postTakeaway}`;
 	});
 
 	// --- what you post

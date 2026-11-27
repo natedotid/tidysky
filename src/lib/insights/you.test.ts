@@ -6,6 +6,7 @@ import type { FollowAccount } from '#lib/scan/types';
 import { CONFIG } from '#lib/config';
 
 import {
+	dayPartOf,
 	engagement,
 	followBackLine,
 	followerCardCopy,
@@ -13,6 +14,7 @@ import {
 	myMix,
 	myPosting,
 	myPostingGrid,
+	myPostingPartTakeaway,
 	shorten,
 	snapshot,
 	topPostLine
@@ -193,6 +195,73 @@ describe('myPosting', () => {
 		const p = myPosting(items);
 		expect(p.kind).toBe('grid');
 		if (p.kind === 'grid') expect(p.grid).toEqual(myPostingGrid(items));
+	});
+});
+
+describe('dayPartOf', () => {
+	it('puts each part on its boundary hour (5 AM is night, 6 AM is morning)', () => {
+		expect(dayPartOf(0)).toBe('night');
+		expect(dayPartOf(5)).toBe('night');
+		expect(dayPartOf(6)).toBe('morning');
+		expect(dayPartOf(11)).toBe('morning');
+		expect(dayPartOf(12)).toBe('afternoon');
+		expect(dayPartOf(17)).toBe('afternoon');
+		expect(dayPartOf(18)).toBe('evening');
+		expect(dayPartOf(23)).toBe('evening');
+	});
+});
+
+describe('myPostingPartTakeaway', () => {
+	const counts = (set: Array<[number, number]>): number[] => {
+		const h = new Array<number>(24).fill(0);
+		for (const [hour, v] of set) h[hour] = v;
+		return h;
+	};
+
+	it('names the part with a clear peak', () => {
+		// 18 in the morning (9, 10 AM) against 2 in the evening.
+		expect(
+			myPostingPartTakeaway(
+				counts([
+					[9, 10],
+					[10, 8],
+					[20, 2]
+				])
+			)
+		).toBe('You post most in the morning.');
+	});
+
+	it('says spread across the day on a two-way tie for the most', () => {
+		expect(
+			myPostingPartTakeaway(
+				counts([
+					[9, 5],
+					[14, 5]
+				])
+			)
+		).toBe('Your posts are spread across the day.');
+		// A three-way tie is still a tie.
+		expect(
+			myPostingPartTakeaway(
+				counts([
+					[2, 3],
+					[8, 3],
+					[19, 3]
+				])
+			)
+		).toBe('Your posts are spread across the day.');
+	});
+
+	it('every post in one hour names that hour part', () => {
+		expect(myPostingPartTakeaway(counts([[15, 30]]))).toBe('You post most in the afternoon.');
+	});
+
+	it('says at night for a night peak', () => {
+		expect(myPostingPartTakeaway(counts([[2, 12]]))).toBe('You post most at night.');
+	});
+
+	it('is null on an empty sample', () => {
+		expect(myPostingPartTakeaway(new Array<number>(24).fill(0))).toBeNull();
 	});
 });
 

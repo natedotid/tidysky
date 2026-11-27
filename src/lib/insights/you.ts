@@ -96,6 +96,43 @@ export function myPosting(items: OwnFeedItem[]): MyPosting {
 	return { kind: 'grid', grid: myPostingGrid(items) };
 }
 
+/** The four parts of the day, in local time, in the order they occur. */
+export type DayPart = 'night' | 'morning' | 'afternoon' | 'evening';
+
+const DAY_PARTS: readonly DayPart[] = ['night', 'morning', 'afternoon', 'evening'];
+
+/**
+ * Which part of the day a local hour falls in. Night runs 12 AM to 6 AM,
+ * morning 6 AM to 12 PM, afternoon 12 PM to 6 PM, evening 6 PM to 12 AM.
+ * A boundary hour belongs to the part that starts on it: 5 AM is night,
+ * 6 AM is morning, 11 PM is evening.
+ */
+export function dayPartOf(hour: number): DayPart {
+	if (hour < 6) return 'night';
+	if (hour < 12) return 'morning';
+	if (hour < 18) return 'afternoon';
+	return 'evening';
+}
+
+/**
+ * The under-50 "When you post" takeaway, in the user's time zone: group the
+ * raw per-hour counts into the four parts of the day and name the part with
+ * the most posts. A single hour is not meaningful from a handful of posts,
+ * and with that few several parts often tie, so a tie for the top says the
+ * posts are spread across the day instead of naming an arbitrary winner.
+ * Null on an empty sample (the card's existing empty state applies).
+ */
+export function myPostingPartTakeaway(hours: number[]): string | null {
+	const totals: Record<DayPart, number> = { night: 0, morning: 0, afternoon: 0, evening: 0 };
+	for (let h = 0; h < 24; h += 1) totals[dayPartOf(h)] += hours[h] ?? 0;
+	if (DAY_PARTS.reduce((s, p) => s + totals[p], 0) === 0) return null;
+	const max = Math.max(...DAY_PARTS.map((p) => totals[p]));
+	const winners = DAY_PARTS.filter((p) => totals[p] === max);
+	if (winners.length !== 1) return 'Your posts are spread across the day.';
+	const phrase = winners[0] === 'night' ? 'at night' : `in the ${winners[0]}`;
+	return `You post most ${phrase}.`;
+}
+
 export interface YouMix {
 	/** 0–1 shares of the sample, all items. */
 	share: { post: number; reply: number; quote: number; repost: number };
