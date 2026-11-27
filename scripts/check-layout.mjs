@@ -77,6 +77,11 @@
 // around" takeaway and a "From your last 30 posts and reposts" footnote.
 // Chromium only.
 //
+// It also checks every hour chart's tick labels at 360, 390 and 1280 px, in
+// both browsers: each label's box must sit inside the chart's box, so the
+// first label (and a last-column one, if there were one) is never clipped.
+// One demo scan per browser; the viewport is resized in place afterwards.
+//
 // The sheet, row and keyboard checks run in both Chromium and WebKit (the
 // WebKit run is the one that models Safari); WebKit also gets the
 // close-behavior suite.
@@ -1224,6 +1229,63 @@ async function checkRecentChangesAlignment(page, width, url) {
  * the grid. The hour chart has 24 track columns plus one value bar per
  * non-empty hour (the grid would have 168 cells).
  */
+/**
+ * Every hour chart's tick labels must sit inside the chart's box: a centered
+ * label on the first (or last) column would extend past the edge and be
+ * clipped. Fails when no hour chart is mounted at all, so it cannot pass
+ * vacuously.
+ */
+async function checkHourTicks(page, width, label) {
+	const m = await page.evaluate(() => {
+		const charts = [...document.querySelectorAll('.hourchart svg')];
+		const bad = [];
+		for (const svg of charts) {
+			const box = svg.getBoundingClientRect();
+			for (const t of svg.querySelectorAll('text.tick')) {
+				const r = t.getBoundingClientRect();
+				if (r.left < box.left - 1 || r.right > box.right + 1) {
+					bad.push(
+						`"${t.textContent.trim()}" [${Math.round(r.left)}, ${Math.round(
+							r.right
+						)}] outside chart [${Math.round(box.left)}, ${Math.round(box.right)}]`
+					);
+				}
+			}
+		}
+		return { charts: charts.length, bad };
+	});
+	const ok = m.charts >= 1 && m.bad.length === 0;
+	const pass = report(
+		`${label} @ ${width}px: hour chart tick labels inside the chart`,
+		ok,
+		m.charts === 0 ? 'no hour chart mounted' : m.bad.join(' ')
+	);
+	return pass;
+}
+
+/**
+ * The hour chart's tick labels at every width, in this browser. One context:
+ * the demo scan runs once on the first settle, then the viewport is resized
+ * and the already-mounted chart re-measured (the data is cached in the demo
+ * database, so no rescan).
+ */
+async function runHourTicks(browser) {
+	const context = await browser.newContext({ viewport: { width: 360, height: HEIGHT } });
+	const page = await context.newPage();
+	watchConsole(page);
+	await settle(page, INSIGHTS);
+	// One-viewport steps so the IntersectionObserver-gated chart mounts.
+	await scrollThrough(page);
+	let ok = true;
+	for (const width of [360, 390, 1280]) {
+		await page.setViewportSize({ width, height: HEIGHT });
+		await page.waitForTimeout(250);
+		if (!(await checkHourTicks(page, width, 'hour ticks'))) ok = false;
+	}
+	await context.close();
+	return ok;
+}
+
 async function runYouHourChart(browser, width) {
 	const context = await browser.newContext({ viewport: { width, height: HEIGHT } });
 	const page = await context.newPage();
@@ -1260,8 +1322,11 @@ async function runYouHourChart(browser, width) {
 		ok,
 		m === null ? 'no "When you post" card' : JSON.stringify(m)
 	);
+	// The under-50 card's chart is the same component: its ticks must sit
+	// inside the chart here too (it is the only hour chart on this page).
+	const ticksPass = await checkHourTicks(page, width, 'you hour chart ticks');
 	await context.close();
-	return pass;
+	return pass && ticksPass;
 }
 
 /** Every check at this width (Chromium): all pages, all suites, sheets open. */
@@ -1393,6 +1458,10 @@ async function main() {
 				// minutes without extra coverage (the card logic is
 				// browser-independent).
 				if (b.full && !(await runYouHourChart(browser, 390))) ok = false;
+				// The hour chart's tick labels at 360, 390 and 1280 px, in
+				// both browsers (one demo scan per browser; the viewport is
+				// resized in place afterwards, the data is cached).
+				if (!(await runHourTicks(browser))) ok = false;
 				if (!(await runMobile(browser))) ok = false;
 				// The profile preview sheet, in light and dark, at the phone
 				// widths and a desktop width (one demo scan per context).

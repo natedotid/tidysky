@@ -87,7 +87,15 @@
 					{/if}
 				{/each}
 				{#each TICKS as t (t.h)}
-					<text class="tick" x={t.h * colW + colW / 2} y={BAR_H + 14} text-anchor="middle">
+					<!-- The first and last column sit on the chart's edges, so
+						a centered label there would be clipped: align those
+						inward instead. -->
+					<text
+						class="tick"
+						x={t.h === 0 ? 0 : t.h === 23 ? 24 * colW : t.h * colW + colW / 2}
+						y={BAR_H + 14}
+						text-anchor={t.h === 0 ? 'start' : t.h === 23 ? 'end' : 'middle'}
+					>
 						{t.label}
 					</text>
 				{/each}
