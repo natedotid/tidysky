@@ -1162,6 +1162,52 @@ async function checkSheetClose(page, t) {
 	return okTitle && ok1 && ok2 && ok3;
 }
 
+/**
+ * Recent changes must stay inside the page gutter: its left and right
+ * edges line up with the page heading's at phone widths. The demo seeds one
+ * log entry, so the section is expected to be present with at least one row.
+ */
+async function checkRecentChangesAlignment(page, width, url) {
+	let found = true;
+	try {
+		await page.waitForSelector('section.recent', { timeout: 10_000 });
+	} catch {
+		found = false;
+	}
+	if (!found) {
+		return report(
+			`${url} @ ${width}px: Recent changes inside the page gutter`,
+			false,
+			'no section.recent rendered (demo entry missing?)'
+		);
+	}
+	const m = await page.evaluate(() => {
+		const h1 = document.querySelector('.page h1');
+		const recent = document.querySelector('.page section.recent');
+		if (h1 === null || recent === null) return null;
+		const a = h1.getBoundingClientRect();
+		const b = recent.getBoundingClientRect();
+		return {
+			entries: recent.querySelectorAll('li').length,
+			left: Math.abs(a.left - b.left),
+			right: Math.abs(a.right - b.right)
+		};
+	});
+	if (m === null) {
+		return report(
+			`${url} @ ${width}px: Recent changes inside the page gutter`,
+			false,
+			'page heading or section not found'
+		);
+	}
+	const ok = m.entries >= 1 && m.left <= 1 && m.right <= 1;
+	return report(
+		`${url} @ ${width}px: Recent changes inside the page gutter`,
+		ok,
+		`entries=${m.entries} leftDelta=${m.left.toFixed(1)} rightDelta=${m.right.toFixed(1)}`
+	);
+}
+
 /** Every check at this width (Chromium): all pages, all suites, sheets open. */
 async function runFullWidth(browser, width) {
 	const context = await browser.newContext({ viewport: { width, height: HEIGHT } });
@@ -1177,6 +1223,7 @@ async function runFullWidth(browser, width) {
 			if (!(await checkRowsFit(page, width, entry.url))) ok = false;
 			if (width === 390 && !(await checkRowsRoom(page, width, entry.url))) ok = false;
 			if (width === 390 && !(await checkRowNamePriority(page, width, entry.url))) ok = false;
+			if (!(await checkRecentChangesAlignment(page, width, entry.url))) ok = false;
 		}
 		// Before the You tab switch below: the card lives on the Following tab.
 		if (entry.url.startsWith('/insights')) {
@@ -1221,6 +1268,7 @@ async function runSheetRowsWidth(browser, width) {
 		if (!(await checkRowsFit(page, width, entry.url))) ok = false;
 		if (width === 390 && !(await checkRowsRoom(page, width, entry.url))) ok = false;
 		if (width === 390 && !(await checkRowNamePriority(page, width, entry.url))) ok = false;
+		if (!(await checkRecentChangesAlignment(page, width, entry.url))) ok = false;
 	}
 	// The "Who you interact with" card in WebKit too (both tabs, overflow,
 	// name ellipsis). The demo scan already ran on the cleanup pages above.

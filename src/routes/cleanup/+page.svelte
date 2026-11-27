@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { page } from '$app/state';
 
 	import { describeError } from '#lib/actions/unfollow';
@@ -93,6 +94,20 @@
 	$effect(() => {
 		const key = scanState.boundKey;
 		if (key !== null) void cleanupState.bind(key);
+	});
+
+	// A finished scan can add to the log (demo mode seeds one entry). The
+	// finish time is set before the log is written, so the snapshot list -
+	// written last, after the log seed - is the reliable "the scan is fully
+	// done" signal: re-read Recent changes when it changes. The bump is
+	// untracked: reading logRefresh in `+=` would make the effect depend on
+	// itself and run forever.
+	$effect(() => {
+		void scanState.lastFinishedAt;
+		void scanState.snapshots;
+		untrack(() => {
+			logRefresh += 1;
+		});
 	});
 
 	// The "You:" line's "since you joined" wording: your own createdAt from
@@ -525,6 +540,19 @@
 		{:else}
 			<p class="empty">Pick a preset or add a filter to find accounts to tidy up.</p>
 		{/if}
+
+		{#if undoNote !== null}
+			<p class="undo-note" class:ok={undoNote.ok} role={undoNote.ok ? 'status' : 'alert'}>
+				{undoNote.text}
+			</p>
+		{/if}
+		{#if undoExpiredText !== null}
+			<p class="undo-note" role="alert">{undoExpiredText}</p>
+			<button type="button" class="sign-in-again" onclick={() => session.expire()}>
+				Sign in again
+			</button>
+		{/if}
+		<RecentChanges storeKey={scanState.boundKey} refresh={logRefresh} onUndo={askUndo} />
 	{/if}
 </div>
 
@@ -582,19 +610,6 @@
 		previewAccount = null;
 	}}
 />
-
-{#if undoNote !== null}
-	<p class="undo-note" class:ok={undoNote.ok} role={undoNote.ok ? 'status' : 'alert'}>
-		{undoNote.text}
-	</p>
-{/if}
-{#if undoExpiredText !== null}
-	<p class="undo-note" role="alert">{undoExpiredText}</p>
-	<button type="button" class="sign-in-again" onclick={() => session.expire()}>
-		Sign in again
-	</button>
-{/if}
-<RecentChanges storeKey={scanState.boundKey} refresh={logRefresh} onUndo={askUndo} />
 
 <dialog class="undo-confirm" bind:this={undoDialog}>
 	<p>{undoWarning}</p>

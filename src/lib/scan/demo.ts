@@ -21,7 +21,7 @@ import type {
 	OwnRecord,
 	ProfileLite
 } from './source';
-import type { FollowAccount, ProfileViewer, Snapshot } from './types';
+import type { FollowAccount, ProfileViewer, Snapshot, UnfollowLogEntry } from './types';
 import { blockApplies } from './viewer';
 
 const DAY_MS = 86_400_000;
@@ -874,6 +874,23 @@ export function demoPreviousSnapshot(
 	snap.totals.follows += dropped.length;
 	snap.totals.active30 += dropped.length;
 	return snap;
+}
+
+/**
+ * The seeded "recent change" for the demo: one mute of the first quiet
+ * account, a few minutes before `now`, so the Clean up page's Recent
+ * changes section has a believable entry. A mute, so the account stays in
+ * the follows list like the rest of the demo data.
+ */
+export function demoLogEntry(accounts: FollowAccount[], now: Date): Omit<UnfollowLogEntry, 'id'> {
+	const pick = accounts.find((a) => isQuiet90(a, now)) ?? accounts[0];
+	return {
+		did: pick.did,
+		handle: pick.handle,
+		at: new Date(now.getTime() - 5 * 60_000).toISOString(),
+		reason: 'No posts in 90 days',
+		action: 'mute'
+	};
 }
 
 /** Walk backwards from the newest item, one gap at a time, until `max` items. */

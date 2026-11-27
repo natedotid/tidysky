@@ -12,7 +12,7 @@ import { CONFIG } from '#lib/config';
 import { openStore, type Store } from '#lib/db/store';
 import { makeSnapshot } from '#lib/insights/snapshots';
 
-import { DemoSource, demoPreviousSnapshot } from './demo';
+import { DemoSource, demoLogEntry, demoPreviousSnapshot } from './demo';
 import { LiveSource } from './live-source';
 import { runScan, type ScanProgress } from './scan';
 import type { DataSource } from './source';
@@ -253,6 +253,13 @@ class ScanState {
 					await store.addSnapshot(
 						demoPreviousSnapshot(this.accounts, this.source.droppedElsewhere, now)
 					);
+				}
+				// Same idea for the undo log: one recent change so Recent
+				// changes has something to show. Skipped once the user has
+				// made a real change, so the seed never duplicates one.
+				const log = await store.listLog();
+				if (log.length === 0) {
+					await store.addLog(demoLogEntry(this.accounts, now));
 				}
 			}
 			await store.addSnapshot(makeSnapshot(this.accounts, now));
