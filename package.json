@@ -1,7 +1,7 @@
 {
 	"name": "tidysky",
 	"private": true,
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"type": "module",
 	"license": "MIT",
 	"author": "Nate Kirk (https://nate.id)",
